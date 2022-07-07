@@ -9,7 +9,7 @@ using System.Threading.Tasks;
 using System.Xml.Linq;
 using MediaBrowser.Model.Extensions;
 
-namespace Emby.Plugins.MyAnimeList
+namespace Emby.Anime
 {
     internal static class Equals_check
     {

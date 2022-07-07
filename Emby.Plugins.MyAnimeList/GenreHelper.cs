@@ -3,7 +3,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 
-namespace Emby.Plugins.MyAnimeList
+namespace Emby.Anime
 {
     public static class GenreHelper
     {

@@ -12,6 +12,7 @@ using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
 using MediaBrowser.Model.Configuration;
+using Emby.Anime;
 
 namespace Emby.Plugins.MyAnimeList
 {

@@ -11,6 +11,7 @@ using System.Threading.Tasks;
 using MediaBrowser.Common.Net;
 using System.IO;
 using MediaBrowser.Model.Net;
+using Emby.Anime;
 
 namespace Emby.Plugins.MyAnimeList
 {
