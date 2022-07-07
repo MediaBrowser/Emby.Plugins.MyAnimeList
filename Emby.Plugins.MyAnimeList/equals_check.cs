@@ -42,6 +42,26 @@ namespace Emby.Anime
             }
             return a;
         }
+        public static string Half_string(string string_, int min_lenght = 0, int p = 50)
+        {
+            decimal length = 0;
+            if (((int)((decimal)string_.Length - (((decimal)string_.Length / 100m) * (decimal)p)) > min_lenght))
+            {
+                length = (decimal)string_.Length - (((decimal)string_.Length / 100m) * (decimal)p);
+            }
+            else
+            {
+                if (string_.Length < min_lenght)
+                {
+                    length = string_.Length;
+                }
+                else
+                {
+                    length = min_lenght;
+                }
+            }
+            return string_.Substring(0, (int)length);
+        }
 
         /// <summary>
         /// Clear name heavy.
@@ -49,7 +69,7 @@ namespace Emby.Anime
         /// </summary>
         /// <param name="a"></param>
         /// <returns></returns>
-        private static string Clear_name_step2(string a)
+        public static string Clear_name_step2(string a)
         {
             if (a.Contains("Gekijyouban"))
                 a = (a.Replace("Gekijyouban", "", StringComparison.OrdinalIgnoreCase) + " Movie").Trim();
