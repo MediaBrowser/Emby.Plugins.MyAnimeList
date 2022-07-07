@@ -8,6 +8,9 @@ using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
+using MediaBrowser.Common.Net;
+using System.IO;
+using MediaBrowser.Model.Net;
 
 namespace Emby.Plugins.MyAnimeList
 {
@@ -18,7 +21,7 @@ namespace Emby.Plugins.MyAnimeList
     {
         public List<string> anime_search_names = new List<string>();
         public List<string> anime_search_ids = new List<string>();
-        private static ILogManager _log;
+        private static ILogger _logger;
         //Use API too search
         public string SearchLink = "https://myanimelist.net/api/anime/search.xml?q={0}";
         //Web Fallback search
@@ -26,6 +29,7 @@ namespace Emby.Plugins.MyAnimeList
         //No API funktion exist too get anime
         public string anime_link = "https://myanimelist.net/anime/";
 
+        private IHttpClient _httpClient;
 
         /// <summary>
         /// WebContent API call to get a anime with id
@@ -33,13 +37,14 @@ namespace Emby.Plugins.MyAnimeList
         /// <param name="id"></param>
         /// <param name="cancellationToken"></param>
         /// <returns></returns>
-        public Api(ILogManager logManager)
+        public Api(ILogger logger, IHttpClient httpClient)
         {
-            _log = logManager;
+            _logger = logger;
+            _httpClient = httpClient;
         }
         public async Task<RemoteSearchResult> GetAnime(string id, string preferredMetadataLanguage, CancellationToken cancellationToken)
         {
-            string WebContent = await WebRequestAPI(anime_link + id, cancellationToken);
+            string WebContent = await WebRequestAPI(anime_link + id, cancellationToken).ConfigureAwait(false);
 
             var result = new RemoteSearchResult
             {
@@ -178,7 +183,7 @@ namespace Emby.Plugins.MyAnimeList
             //API
             if (!string.IsNullOrEmpty(config.Username) && !string.IsNullOrEmpty(config.Password))
             {
-                string WebContent = await WebRequestAPI(string.Format(SearchLink, Uri.EscapeUriString(title)), cancellationToken, config.Username, config.Password);
+                string WebContent = await WebRequestAPI(string.Format(SearchLink, Uri.EscapeUriString(title)), cancellationToken, config.Username, config.Password).ConfigureAwait(false);
                 int x = 0;
                 while (result_text != "")
                 {
@@ -219,7 +224,7 @@ namespace Emby.Plugins.MyAnimeList
             else
             {
                 //Fallback to Web
-                string WebContent = await WebRequestAPI(string.Format(FallbackSearchLink, Uri.EscapeUriString(title)), cancellationToken);
+                string WebContent = await WebRequestAPI(string.Format(FallbackSearchLink, Uri.EscapeUriString(title)), cancellationToken).ConfigureAwait(false);
                 string Regex_id = "-";
                 int x = 0;
                 while (!string.IsNullOrEmpty(Regex_id))
@@ -267,7 +272,7 @@ namespace Emby.Plugins.MyAnimeList
             //API
             if (!string.IsNullOrEmpty(config.Username) && !string.IsNullOrEmpty(config.Password))
             {
-                string WebContent = await WebRequestAPI(string.Format(SearchLink, Uri.EscapeUriString(title)), cancellationToken, config.Username, config.Password);
+                string WebContent = await WebRequestAPI(string.Format(SearchLink, Uri.EscapeUriString(title)), cancellationToken, config.Username, config.Password).ConfigureAwait(false);
                 int x = 0;
                 while (result_text != "")
                 {
@@ -309,7 +314,7 @@ namespace Emby.Plugins.MyAnimeList
             else
             {
                 //Fallback to Web
-                string WebContent = await WebRequestAPI(string.Format(FallbackSearchLink, Uri.EscapeUriString(title)), cancellationToken);
+                string WebContent = await WebRequestAPI(string.Format(FallbackSearchLink, Uri.EscapeUriString(title)), cancellationToken).ConfigureAwait(false);
                 string regex_id = "-";
                 int x = 0;
                 while (!string.IsNullOrEmpty(regex_id))
@@ -348,7 +353,7 @@ namespace Emby.Plugins.MyAnimeList
         /// <returns></returns>
         public async Task<string> FindSeries(string title, MyAnimeListOptions config, CancellationToken cancellationToken)
         {
-            string aid = await Search_GetSeries(title, config, cancellationToken);
+            string aid = await Search_GetSeries(title, config, cancellationToken).ConfigureAwait(false);
             if (!string.IsNullOrEmpty(aid))
             {
                 return aid;
@@ -366,7 +371,7 @@ namespace Emby.Plugins.MyAnimeList
                     x++;
                 }
             }
-            aid = await Search_GetSeries(Equals_check.Clear_name(title), config, cancellationToken);
+            aid = await Search_GetSeries(Equals_check.Clear_name(title), config, cancellationToken).ConfigureAwait(false);
             if (!string.IsNullOrEmpty(aid))
             {
                 return aid;
@@ -409,22 +414,37 @@ namespace Emby.Plugins.MyAnimeList
         {
             try
             {
-                string encoded = Convert.ToBase64String(Encoding.GetEncoding("ISO-8859-1").GetBytes(name + ":" + pw));
-                string _strContent;
-                using (WebClient client = new WebClient())
+                var options = new HttpRequestOptions
                 {
-                    if (!string.IsNullOrEmpty(name) && !string.IsNullOrEmpty(pw))
-                    {
-                        client.Headers.Add("Authorization", "Basic " + encoded);
-                    }
-                    Task<string> async_content = client.DownloadStringTaskAsync(link);
-                    _strContent = await async_content;
+                    CancellationToken = cancellationToken,
+                    Url = link
+                };
+
+                if (!string.IsNullOrEmpty(name) && !string.IsNullOrEmpty(pw))
+                {
+                    var encoded = Convert.ToBase64String(Encoding.GetEncoding("ISO-8859-1").GetBytes(name + ":" + pw));
+
+                    options.RequestHeaders["Authorization"] = "Basic " + encoded;
                 }
-                return _strContent;
+
+                using (var stream = await _httpClient.Get(options).ConfigureAwait(false))
+                {
+                    using (var reader = new StreamReader(stream))
+                    {
+                        return await reader.ReadToEndAsync().ConfigureAwait(false);
+                    }
+                }
             }
-            catch (WebException)
+            catch (HttpException ex)
             {
-                return "";
+                _logger.ErrorException("Error from {0}", ex, link);
+
+                if (ex.IsTimedOut)
+                {
+                    throw;
+                }
+
+                return string.Empty;
             }
         }
     }

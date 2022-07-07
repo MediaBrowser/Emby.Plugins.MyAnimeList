@@ -1,4 +1,4 @@
-﻿<div data-role="page" class="page type-interior libraryFileOrganizerLogPage pluginConfigurationPage fullWidthContent" data-helpurl="https://github.com/MediaBrowser/Wiki/wiki/Subtitles" data-controller="__plugin/opensubtitlesjs">
+﻿<div data-role="page" class="page type-interior libraryFileOrganizerLogPage pluginConfigurationPage fullWidthContent" data-helpurl="https://github.com/MediaBrowser/Wiki/wiki/Subtitles" data-controller="__plugin/myanimelistjs">
 
     <div class="content-primary padded-top">
 
@@ -11,26 +11,16 @@
 
 
             <div class="inputContainer">
-                <input is="emby-input" type="text" id="txtOpenSubtitleUsername" autocomplete="off" label="${LabelOpenSubtitlesUsername}" />
-                <div class="fieldDescription">
-                    <a is="emby-linkbutton" class="button-link" target="_blank" href="http://www.opensubtitles.org/">${HeaderSignUp}</a>
-                </div>
+                <input is="emby-input" type="text" id="txtUsername" autocomplete="off" label="MyAnimeList API Username:" />
             </div>
 
             <div class="inputContainer">
-                <input is="emby-input" type="password" id="txtOpenSubtitlePassword" autocomplete="off" label="${LabelOpenSubtitlesPassword}" />
-            </div>
-            <div class="checkboxContainer">
-                <label>
-                    <input is="emby-checkbox" type="checkbox" id="optionVip" />
-                    <span>${VIPMember}</span>
-                </label>
+                <input is="emby-input" type="password" id="txtPassword" autocomplete="off" label="MyAnimeList API Password:" />
             </div>
 
             <div>
                 <button is="emby-button" type="submit" class="raised button-submit block"><span>${Save}</span></button>
             </div>
-            <div class="fieldDescription">${AutomaticSubtitleDownloadInstructions}</div>
         </form>
     </div>
 </div>

@@ -7,7 +7,7 @@ namespace Emby.Plugins.MyAnimeList
 {
     public static class GenreHelper
     {
-        private static readonly Dictionary<string, string> GenreMappings = new Dictionary<string, string>
+        private static readonly Dictionary<string, string> GenreMappings = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
         {
             {"Action", "Action"},
             {"Advanture", "Adventure"},
@@ -203,7 +203,7 @@ namespace Emby.Plugins.MyAnimeList
             "Schlauer Protagonist",
         };
 
-        private static readonly Dictionary<string, string> IgnoreIfPresent = new Dictionary<string, string>
+        private static readonly Dictionary<string, string> IgnoreIfPresent = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
         {
             {"Psychological Thriller", "Thriller"}
         };
@@ -211,7 +211,7 @@ namespace Emby.Plugins.MyAnimeList
         public static void CleanupGenres(Series series)
         {
             series.Genres = RemoveRedundantGenres(series.Genres)
-                                       .Distinct()
+                                       .Distinct(StringComparer.OrdinalIgnoreCase)
                                        .ToArray();
 
             TidyGenres(series);
@@ -220,7 +220,7 @@ namespace Emby.Plugins.MyAnimeList
 
             series.Genres = series.Genres.ToArray();
 
-            if (!series.Genres.Contains("Anime"))
+            if (!series.Genres.Contains("Anime", StringComparer.OrdinalIgnoreCase))
             {
                 series.Genres = series.Genres.Except(new[] { "Animation" }).ToArray();
 
@@ -245,7 +245,7 @@ namespace Emby.Plugins.MyAnimeList
                     genres.Add(genre);
                 }
 
-                if (GenresAsTags.Contains(genre))
+                if (GenresAsTags.Contains(genre, StringComparer.OrdinalIgnoreCase))
                 {
                     genres.Add(genre);
                 }

@@ -9,11 +9,13 @@
   <ItemGroup>
     <None Remove="Configuration\myanimelist.html" />
     <None Remove="Configuration\myanimelist.js" />
+    <None Remove="thumb.png" />
   </ItemGroup>
 
   <ItemGroup>
     <EmbeddedResource Include="Configuration\myanimelist.html" />
     <EmbeddedResource Include="Configuration\myanimelist.js" />
+    <EmbeddedResource Include="thumb.png" />
   </ItemGroup>
 
   <ItemGroup>

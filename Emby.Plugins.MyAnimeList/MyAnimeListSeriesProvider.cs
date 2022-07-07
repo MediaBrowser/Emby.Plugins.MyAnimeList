@@ -27,8 +27,8 @@ namespace Emby.Plugins.MyAnimeList
 
         public MyAnimeListSeriesProvider(IConfigurationManager config, IHttpClient httpClient, ILogManager logManager)
         {
-            _api = new Api(logManager);
             _log = logManager.GetLogger("MyAnimeList");
+            _api = new Api(_log, httpClient);
             _httpClient = httpClient;
             _config = config;
         }
@@ -40,13 +40,12 @@ namespace Emby.Plugins.MyAnimeList
             var aid = info.GetProviderId(provider_name);
             if (string.IsNullOrEmpty(aid))
             {
-                _log.Info("Start MyAnimeList... Searching(" + info.Name + ")");
-                aid = await _api.FindSeries(info.Name, _config.GetMyAnimeListOptions(), cancellationToken);
+                aid = await _api.FindSeries(info.Name, _config.GetMyAnimeListOptions(), cancellationToken).ConfigureAwait(false);
             }
 
             if (!string.IsNullOrEmpty(aid))
             {
-                string WebContent = await _api.WebRequestAPI(_api.anime_link + aid, cancellationToken);
+                string WebContent = await _api.WebRequestAPI(_api.anime_link + aid, cancellationToken).ConfigureAwait(false);
                 result.Item = new Series();
                 result.HasMetadata = true;
 
@@ -80,14 +79,14 @@ namespace Emby.Plugins.MyAnimeList
             if (!string.IsNullOrEmpty(aid))
             {
                 if (!results.ContainsKey(aid))
-                    results.Add(aid, await _api.GetAnime(aid, searchInfo.MetadataLanguage, cancellationToken));
+                    results.Add(aid, await _api.GetAnime(aid, searchInfo.MetadataLanguage, cancellationToken).ConfigureAwait(false));
             }
             if (!string.IsNullOrEmpty(searchInfo.Name))
             {
-                List<string> ids = await _api.Search_GetSeries_list(searchInfo.Name, _config.GetMyAnimeListOptions(), cancellationToken);
+                List<string> ids = await _api.Search_GetSeries_list(searchInfo.Name, _config.GetMyAnimeListOptions(), cancellationToken).ConfigureAwait(false);
                 foreach (string a in ids)
                 {
-                    results.Add(a, await _api.GetAnime(a, searchInfo.MetadataLanguage, cancellationToken));
+                    results.Add(a, await _api.GetAnime(a, searchInfo.MetadataLanguage, cancellationToken).ConfigureAwait(false));
                 }
             }
 
@@ -112,7 +111,8 @@ namespace Emby.Plugins.MyAnimeList
 
         public MyAnimeListSeriesImageProvider(IHttpClient httpClient, IApplicationPaths appPaths, ILogManager logManager)
         {
-            _api = new Api(logManager);
+            var logger = logManager.GetLogger("MyAnimeList");
+            _api = new Api(logger, _httpClient);
             _httpClient = httpClient;
             _appPaths = appPaths;
         }
@@ -138,7 +138,7 @@ namespace Emby.Plugins.MyAnimeList
 
             if (!string.IsNullOrEmpty(aid))
             {
-                var primary = _api.Get_ImageUrlAsync(await _api.WebRequestAPI(_api.anime_link + aid, cancellationToken));
+                var primary = _api.Get_ImageUrlAsync(await _api.WebRequestAPI(_api.anime_link + aid, cancellationToken).ConfigureAwait(false));
                 list.Add(new RemoteImageInfo
                 {
                     ProviderName = Name,

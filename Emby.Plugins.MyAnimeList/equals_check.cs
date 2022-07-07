@@ -7,6 +7,7 @@ using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Xml.Linq;
+using MediaBrowser.Model.Extensions;
 
 namespace Emby.Plugins.MyAnimeList
 {
@@ -21,20 +22,20 @@ namespace Emby.Plugins.MyAnimeList
         {
             try
             {
-                a = a.Trim().Replace(One_line_regex(new Regex(@"(?s) \(.*?\)"), a.Trim(), 0), "");
+                a = a.Trim().Replace(One_line_regex(new Regex(@"(?s) \(.*?\)"), a.Trim(), 0), "", StringComparison.OrdinalIgnoreCase);
             }
             catch (Exception)
             { }
-            a = a.Replace(".", " ");
-            a = a.Replace("-", " ");
-            a = a.Replace("`", "");
-            a = a.Replace("'", "");
-            a = a.Replace("&", "and");
-            a = a.Replace("(", "");
-            a = a.Replace(")", "");
+            a = a.Replace(".", " ", StringComparison.OrdinalIgnoreCase);
+            a = a.Replace("-", " ", StringComparison.OrdinalIgnoreCase);
+            a = a.Replace("`", "", StringComparison.OrdinalIgnoreCase);
+            a = a.Replace("'", "", StringComparison.OrdinalIgnoreCase);
+            a = a.Replace("&", "and", StringComparison.OrdinalIgnoreCase);
+            a = a.Replace("(", "", StringComparison.OrdinalIgnoreCase);
+            a = a.Replace(")", "", StringComparison.OrdinalIgnoreCase);
             try
             {
-                a = a.Replace(One_line_regex(new Regex(@"(?s)(S[0-9]+)"), a.Trim()), One_line_regex(new Regex(@"(?s)S([0-9]+)"), a.Trim()));
+                a = a.Replace(One_line_regex(new Regex(@"(?s)(S[0-9]+)"), a.Trim()), One_line_regex(new Regex(@"(?s)S([0-9]+)"), a.Trim()), StringComparison.OrdinalIgnoreCase);
             }
             catch (Exception)
             {
@@ -51,25 +52,25 @@ namespace Emby.Plugins.MyAnimeList
         private static string Clear_name_step2(string a)
         {
             if (a.Contains("Gekijyouban"))
-                a = (a.Replace("Gekijyouban", "") + " Movie").Trim();
+                a = (a.Replace("Gekijyouban", "", StringComparison.OrdinalIgnoreCase) + " Movie").Trim();
             if (a.Contains("gekijyouban"))
-                a = (a.Replace("gekijyouban", "") + " Movie").Trim();
+                a = (a.Replace("gekijyouban", "", StringComparison.OrdinalIgnoreCase) + " Movie").Trim();
             try
             {
-                a = a.Trim().Replace(One_line_regex(new Regex(@"(?s) \(.*?\)"), a.Trim(), 0), "");
+                a = a.Trim().Replace(One_line_regex(new Regex(@"(?s) \(.*?\)"), a.Trim(), 0), "", StringComparison.OrdinalIgnoreCase);
             }
             catch (Exception)
             { }
-            a = a.Replace(".", " ");
-            a = a.Replace("-", " ");
-            a = a.Replace("`", "");
-            a = a.Replace("'", "");
-            a = a.Replace("&", "and");
-            a = a.Replace(":", "");
-            a = a.Replace("␣", "");
-            a = a.Replace("2wei", "zwei");
-            a = a.Replace("3rei", "drei");
-            a = a.Replace("4ier", "vier");
+            a = a.Replace(".", " ", StringComparison.OrdinalIgnoreCase);
+            a = a.Replace("-", " ", StringComparison.OrdinalIgnoreCase);
+            a = a.Replace("`", "", StringComparison.OrdinalIgnoreCase);
+            a = a.Replace("'", "", StringComparison.OrdinalIgnoreCase);
+            a = a.Replace("&", "and", StringComparison.OrdinalIgnoreCase);
+            a = a.Replace(":", "", StringComparison.OrdinalIgnoreCase);
+            a = a.Replace("␣", "", StringComparison.OrdinalIgnoreCase);
+            a = a.Replace("2wei", "zwei", StringComparison.OrdinalIgnoreCase);
+            a = a.Replace("3rei", "drei", StringComparison.OrdinalIgnoreCase);
+            a = a.Replace("4ier", "vier", StringComparison.OrdinalIgnoreCase);
             return a;
         }
 
@@ -143,43 +144,43 @@ namespace Emby.Plugins.MyAnimeList
         /// </summary>
         private static bool Core_compare(string a, string b)
         {
-            if (a == b)
+            if (string.Equals(a, b, StringComparison.OrdinalIgnoreCase))
                 return true;
 
-            a = a.ToLower().Replace(" ", "").Trim().Replace(".", "");
-            b = b.ToLower().Replace(" ", "").Trim().Replace(".", "");
+            a = a.ToLower().Replace(" ", "", StringComparison.OrdinalIgnoreCase).Trim().Replace(".", "", StringComparison.OrdinalIgnoreCase);
+            b = b.ToLower().Replace(" ", "", StringComparison.OrdinalIgnoreCase).Trim().Replace(".", "", StringComparison.OrdinalIgnoreCase);
 
-            if (Clear_name(a) == Clear_name(b))
+            if (string.Equals(Clear_name(a), Clear_name(b), StringComparison.OrdinalIgnoreCase))
                 return true;
-            if (Clear_name_step2(a) == Clear_name_step2(b))
+            if (string.Equals(Clear_name_step2(a), Clear_name_step2(b), StringComparison.OrdinalIgnoreCase))
                 return true;
-            if (a.Replace("-", " ") == b.Replace("-", " "))
+            if (string.Equals(a.Replace("-", " ", StringComparison.OrdinalIgnoreCase), b.Replace("-", " ", StringComparison.OrdinalIgnoreCase), StringComparison.OrdinalIgnoreCase))
                 return true;
-            if (a.Replace(" 2", ":secondseason") == b.Replace(" 2", ":secondseason"))
+            if (string.Equals(a.Replace(" 2", ":secondseason", StringComparison.OrdinalIgnoreCase), b.Replace(" 2", ":secondseason", StringComparison.OrdinalIgnoreCase), StringComparison.OrdinalIgnoreCase))
                 return true;
-            if (a.Replace("2", "secondseason") == b.Replace("2", "secondseason"))
+            if (string.Equals(a.Replace("2", "secondseason", StringComparison.OrdinalIgnoreCase), b.Replace("2", "secondseason", StringComparison.OrdinalIgnoreCase), StringComparison.OrdinalIgnoreCase))
                 return true;
-            if (Convert_symbols_too_numbers(a, "I") == Convert_symbols_too_numbers(b, "I"))
+            if (string.Equals(Convert_symbols_too_numbers(a, "I"), Convert_symbols_too_numbers(b, "I"), StringComparison.OrdinalIgnoreCase))
                 return true;
-            if (Convert_symbols_too_numbers(a, "!") == Convert_symbols_too_numbers(b, "!"))
+            if (string.Equals(Convert_symbols_too_numbers(a, "!"), Convert_symbols_too_numbers(b, "!"), StringComparison.OrdinalIgnoreCase))
                 return true;
-            if (a.Replace("ndseason", "") == b.Replace("ndseason", ""))
+            if (string.Equals(a.Replace("ndseason", "", StringComparison.OrdinalIgnoreCase), b.Replace("ndseason", "", StringComparison.OrdinalIgnoreCase), StringComparison.OrdinalIgnoreCase))
                 return true;
-            if (a.Replace("ndseason", "") == b)
+            if (string.Equals(a.Replace("ndseason", "", StringComparison.OrdinalIgnoreCase), b, StringComparison.OrdinalIgnoreCase))
                 return true;
-            if (One_line_regex(new Regex(@"((.*)s([0 - 9]))"), a, 2) + One_line_regex(new Regex(@"((.*)s([0 - 9]))"), a, 3) == One_line_regex(new Regex(@"((.*)s([0 - 9]))"), b, 2) + One_line_regex(new Regex(@"((.*)s([0 - 9]))"), b, 3))
+            if (string.Equals(One_line_regex(new Regex(@"((.*)s([0 - 9]))"), a, 2) + One_line_regex(new Regex(@"((.*)s([0 - 9]))"), a, 3), One_line_regex(new Regex(@"((.*)s([0 - 9]))"), b, 2) + One_line_regex(new Regex(@"((.*)s([0 - 9]))"), b, 3), StringComparison.OrdinalIgnoreCase))
                 if (!string.IsNullOrEmpty(One_line_regex(new Regex(@"((.*)s([0 - 9]))"), a, 2) + One_line_regex(new Regex(@"((.*)s([0 - 9]))"), a, 3)))
                     return true;
-            if (One_line_regex(new Regex(@"((.*)s([0 - 9]))"), a, 2) + One_line_regex(new Regex(@"((.*)s([0 - 9]))"), a, 3) == b)
+            if (string.Equals(One_line_regex(new Regex(@"((.*)s([0 - 9]))"), a, 2) + One_line_regex(new Regex(@"((.*)s([0 - 9]))"), a, 3), b, StringComparison.OrdinalIgnoreCase))
                 if (!string.IsNullOrEmpty(One_line_regex(new Regex(@"((.*)s([0 - 9]))"), a, 2) + One_line_regex(new Regex(@"((.*)s([0 - 9]))"), a, 3)))
                     return true;
-            if (a.Replace("rdseason", "") == b.Replace("rdseason", ""))
+            if (string.Equals(a.Replace("rdseason", "", StringComparison.OrdinalIgnoreCase), b.Replace("rdseason", "", StringComparison.OrdinalIgnoreCase), StringComparison.OrdinalIgnoreCase))
                 return true;
-            if (a.Replace("rdseason", "") == b)
+            if (string.Equals(a.Replace("rdseason", "", StringComparison.OrdinalIgnoreCase), b, StringComparison.OrdinalIgnoreCase))
                 return true;
             try
             {
-                if (a.Replace("2", "secondseason").Replace(One_line_regex(new Regex(@"(?s)\(.*?\)"), a, 0), "") == b.Replace("2", "secondseason").Replace(One_line_regex(new Regex(@"(?s)\(.*?\)"), b, 0), ""))
+                if (string.Equals(a.Replace("2", "secondseason").Replace(One_line_regex(new Regex(@"(?s)\(.*?\)"), a, 0), ""), b.Replace("2", "secondseason").Replace(One_line_regex(new Regex(@"(?s)\(.*?\)"), b, 0), ""), StringComparison.OrdinalIgnoreCase))
                     return true;
             }
             catch (Exception)
@@ -187,7 +188,7 @@ namespace Emby.Plugins.MyAnimeList
             }
             try
             {
-                if (a.Replace("2", "secondseason").Replace(One_line_regex(new Regex(@"(?s)\(.*?\)"), a, 0), "") == b)
+                if (string.Equals(a.Replace("2", "secondseason").Replace(One_line_regex(new Regex(@"(?s)\(.*?\)"), a, 0), ""), b, StringComparison.OrdinalIgnoreCase))
                     return true;
             }
             catch (Exception)
@@ -195,7 +196,7 @@ namespace Emby.Plugins.MyAnimeList
             }
             try
             {
-                if (a.Replace(" 2", ":secondseason").Replace(One_line_regex(new Regex(@"(?s)\(.*?\)"), a, 0), "") == b.Replace(" 2", ":secondseason").Replace(One_line_regex(new Regex(@"(?s)\(.*?\)"), b, 0), ""))
+                if (string.Equals(a.Replace(" 2", ":secondseason").Replace(One_line_regex(new Regex(@"(?s)\(.*?\)"), a, 0), ""), b.Replace(" 2", ":secondseason").Replace(One_line_regex(new Regex(@"(?s)\(.*?\)"), b, 0), ""), StringComparison.OrdinalIgnoreCase))
                     return true;
             }
             catch (Exception)
@@ -203,7 +204,7 @@ namespace Emby.Plugins.MyAnimeList
             }
             try
             {
-                if (a.Replace(" 2", ":secondseason").Replace(One_line_regex(new Regex(@"(?s)\(.*?\)"), a, 0), "") == b)
+                if (string.Equals(a.Replace(" 2", ":secondseason").Replace(One_line_regex(new Regex(@"(?s)\(.*?\)"), a, 0), ""), b, StringComparison.OrdinalIgnoreCase))
                     return true;
             }
             catch (Exception)
@@ -211,7 +212,7 @@ namespace Emby.Plugins.MyAnimeList
             }
             try
             {
-                if (a.Replace(One_line_regex(new Regex(@"(?s)\(.*?\)"), a, 0), "") == b.Replace(One_line_regex(new Regex(@"(?s)\(.*?\)"), b, 0), ""))
+                if (string.Equals(a.Replace(One_line_regex(new Regex(@"(?s)\(.*?\)"), a, 0), ""), b.Replace(One_line_regex(new Regex(@"(?s)\(.*?\)"), b, 0), ""), StringComparison.OrdinalIgnoreCase))
                     return true;
             }
             catch (Exception)
@@ -219,7 +220,7 @@ namespace Emby.Plugins.MyAnimeList
             }
             try
             {
-                if (a.Replace(One_line_regex(new Regex(@"(?s)\(.*?\)"), a, 0), "") == b)
+                if (string.Equals(a.Replace(One_line_regex(new Regex(@"(?s)\(.*?\)"), a, 0), ""), b, StringComparison.OrdinalIgnoreCase))
                     return true;
             }
             catch (Exception)
@@ -227,7 +228,7 @@ namespace Emby.Plugins.MyAnimeList
             }
             try
             {
-                if (b.Replace(One_line_regex(new Regex(@"(?s)\(.*?\)"), b, 0), "").Replace("  2", ": second Season") == a)
+                if (string.Equals(b.Replace(One_line_regex(new Regex(@"(?s)\(.*?\)"), b, 0), "").Replace("  2", ": second Season"), a, StringComparison.OrdinalIgnoreCase))
                     return true;
             }
             catch (Exception)
@@ -235,7 +236,7 @@ namespace Emby.Plugins.MyAnimeList
             }
             try
             {
-                if (a.Replace(" 2ndseason", ":secondseason") + " vs " + b == a)
+                if (string.Equals(a.Replace(" 2ndseason", ":secondseason", StringComparison.OrdinalIgnoreCase) + " vs " + b, a, StringComparison.OrdinalIgnoreCase))
                     return true;
             }
             catch (Exception)
@@ -243,7 +244,7 @@ namespace Emby.Plugins.MyAnimeList
             }
             try
             {
-                if (a.Replace(One_line_regex(new Regex(@"(?s)\(.*?\)"), a, 0), "").Replace("  2", ":secondseason") == b)
+                if (string.Equals(a.Replace(One_line_regex(new Regex(@"(?s)\(.*?\)"), a, 0), "").Replace("  2", ":secondseason"), b, StringComparison.OrdinalIgnoreCase))
                     return true;
             }
             catch (Exception)
@@ -279,7 +280,7 @@ namespace Emby.Plugins.MyAnimeList
                     output = output + symbol;
                     x++;
                 }
-                output = input.Replace(output, highest_number.ToString());
+                output = input.Replace(output, highest_number.ToString(), StringComparison.OrdinalIgnoreCase);
                 if (string.IsNullOrEmpty(output))
                 {
                     output = input;

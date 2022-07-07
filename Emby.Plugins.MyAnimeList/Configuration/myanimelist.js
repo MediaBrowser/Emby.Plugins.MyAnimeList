@@ -3,9 +3,8 @@
 
     function loadPage(page, config) {
 
-        page.querySelector('#txtOpenSubtitleUsername').value = config.OpenSubtitlesUsername || '';
-        page.querySelector('#txtOpenSubtitlePassword').value = config.OpenSubtitlesPasswordHash || '';
-        page.querySelector('#optionVip').checked = config.Vip;
+        page.querySelector('#txtUsername').value = config.Username || '';
+        page.querySelector('#txtPassword').value = config.Password || '';
 
         loading.hide();
     }
@@ -18,13 +17,12 @@
 
         var form = this;
 
-        ApiClient.getNamedConfiguration("opensubtitles").then(function (config) {
+        ApiClient.getNamedConfiguration("myanimelist").then(function (config) {
 
-            config.OpenSubtitlesUsername = form.querySelector('#txtOpenSubtitleUsername').value;
-            config.OpenSubtitlesPasswordHash = form.querySelector('#txtOpenSubtitlePassword').value;
-            config.Vip = form.querySelector('#optionVip').checked;
+            config.Username = form.querySelector('#txtUsername').value;
+            config.Password = form.querySelector('#txtPassword').value;
 
-            ApiClient.updateNamedConfiguration("opensubtitles", config).then(Dashboard.processServerConfigurationUpdateResult);
+            ApiClient.updateNamedConfiguration("myanimelist", config).then(Dashboard.processServerConfigurationUpdateResult);
         });
 
         // Disable default form submission
@@ -33,7 +31,7 @@
 
     function getConfig() {
 
-        return ApiClient.getNamedConfiguration("opensubtitles");
+        return ApiClient.getNamedConfiguration("myanimelist");
     }
 
     return function (view, params) {
