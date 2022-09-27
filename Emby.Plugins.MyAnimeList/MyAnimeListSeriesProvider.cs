@@ -113,7 +113,7 @@ namespace Emby.Plugins.MyAnimeList
         public MyAnimeListSeriesImageProvider(IHttpClient httpClient, IApplicationPaths appPaths, ILogManager logManager)
         {
             var logger = logManager.GetLogger("MyAnimeList");
-            _api = new Api(logger, _httpClient);
+            _api = new Api(logger, httpClient);
             _httpClient = httpClient;
             _appPaths = appPaths;
         }
