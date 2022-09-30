@@ -52,7 +52,7 @@ namespace Emby.Plugins.MyAnimeList
                 Name = SelectName(WebContent, preferredMetadataLanguage)
             };
 
-            result.SearchProviderName = WebUtility.HtmlDecode(One_line_regex(new Regex("<span itemprop=\"name\">" + @"(.*?)<"), WebContent));
+            result.SearchProviderName = WebUtility.HtmlDecode(One_line_regex(new Regex("<div itemprop=\"name\">" + @"(.*?)<"), WebContent));
             result.ImageUrl = Get_ImageUrlAsync(WebContent);
             result.SetProviderId(MyAnimeListSeriesProvider.provider_name, id);
             result.Overview = Get_OverviewAsync(WebContent);
@@ -101,14 +101,14 @@ namespace Emby.Plugins.MyAnimeList
             switch (lang)
             {
                 case "en":
-                    return WebUtility.HtmlDecode(One_line_regex(new Regex(@">([\S\s]*?)<"), One_line_regex(new Regex(@"English:<\/span>(?s)(.*?)<"), WebContent)));
+                    return WebUtility.HtmlDecode(One_line_regex(new Regex(@">([\S\s]*?)<"), One_line_regex(new Regex(@"English:<\/div>(?s)(.*?)<"), WebContent)));
 
                 case "jap":
-                    return WebUtility.HtmlDecode(One_line_regex(new Regex(@">([\S\s]*?)<"), One_line_regex(new Regex(@"Japanese:<\/span>(?s)(.*?)<"), WebContent)));
+                    return WebUtility.HtmlDecode(One_line_regex(new Regex(@">([\S\s]*?)<"), One_line_regex(new Regex(@"Japanese:<\/div>(?s)(.*?)<"), WebContent)));
 
                 //Default is jap_r
                 default:
-                    return WebUtility.HtmlDecode(One_line_regex(new Regex("<span itemprop=\"name\">" + @"(.*?)<"), WebContent));
+                    return WebUtility.HtmlDecode(One_line_regex(new Regex("<div itemprop=\"name\">" + @"(.*?)<"), WebContent));
             }
         }
 
@@ -167,7 +167,7 @@ namespace Emby.Plugins.MyAnimeList
         /// <returns></returns>
         public string Get_OverviewAsync(string WebContent)
         {
-            return WebUtility.HtmlDecode(One_line_regex(new Regex("<span itemprop=\"description\">(?s)(.+?)</span>"), WebContent));
+            return WebUtility.HtmlDecode(One_line_regex(new Regex("<p itemprop=\"description\">(?s)(.+?)</p>"), WebContent));
         }
 
         /// <summary>
