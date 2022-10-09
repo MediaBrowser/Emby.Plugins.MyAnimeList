@@ -12,6 +12,8 @@ using MediaBrowser.Common.Net;
 using System.IO;
 using MediaBrowser.Model.Net;
 using Emby.Anime;
+using System.Linq;
+using System.Globalization;
 
 namespace Emby.Plugins.MyAnimeList
 {
@@ -20,8 +22,6 @@ namespace Emby.Plugins.MyAnimeList
     /// </summary>
     public class Api
     {
-        public List<string> anime_search_names = new List<string>();
-        public List<string> anime_search_ids = new List<string>();
         private static ILogger _logger;
         //Use API too search
         public string SearchLink = "https://myanimelist.net/api/anime/search.xml?q={0}";
@@ -45,16 +45,16 @@ namespace Emby.Plugins.MyAnimeList
         }
         public async Task<RemoteSearchResult> GetAnime(string id, string preferredMetadataLanguage, CancellationToken cancellationToken)
         {
-            string WebContent = await WebRequestAPI(anime_link + id, cancellationToken).ConfigureAwait(false);
+            var WebContent = await WebRequestAPI(anime_link + id, cancellationToken).ConfigureAwait(false);
 
             var result = new RemoteSearchResult
             {
                 Name = SelectName(WebContent, preferredMetadataLanguage)
             };
 
-            result.SearchProviderName = WebUtility.HtmlDecode(One_line_regex(new Regex("<div itemprop=\"name\">" + @"(.*?)<"), WebContent));
+            result.SearchProviderName = MyAnimeListSeriesProvider.StaticName;
             result.ImageUrl = Get_ImageUrlAsync(WebContent);
-            result.SetProviderId(MyAnimeListSeriesProvider.provider_name, id);
+            result.SetProviderId(MyAnimeListSeriesProvider.StaticName, id);
             result.Overview = Get_OverviewAsync(WebContent);
 
             return result;
@@ -101,14 +101,14 @@ namespace Emby.Plugins.MyAnimeList
             switch (lang)
             {
                 case "en":
-                    return WebUtility.HtmlDecode(One_line_regex(new Regex(@">([\S\s]*?)<"), One_line_regex(new Regex(@"English:<\/div>(?s)(.*?)<"), WebContent)));
+                    return WebUtility.HtmlDecode(One_line_regex(new Regex(@">([\S\s]*?)<"), One_line_regex(new Regex(@"English:<\/span>(?s)(.*?)<"), WebContent)));
 
                 case "jap":
-                    return WebUtility.HtmlDecode(One_line_regex(new Regex(@">([\S\s]*?)<"), One_line_regex(new Regex(@"Japanese:<\/div>(?s)(.*?)<"), WebContent)));
+                    return WebUtility.HtmlDecode(One_line_regex(new Regex(@">([\S\s]*?)<"), One_line_regex(new Regex(@"Japanese:<\/span>(?s)(.*?)<"), WebContent)));
 
                 //Default is jap_r
                 default:
-                    return WebUtility.HtmlDecode(One_line_regex(new Regex("<div itemprop=\"name\">" + @"(.*?)<"), WebContent));
+                    return WebUtility.HtmlDecode(One_line_regex(new Regex("<h1 class=\"title-name h1_bold_none\"><strong>" + @"(.*?)<"), WebContent));
             }
         }
 
@@ -171,96 +171,6 @@ namespace Emby.Plugins.MyAnimeList
         }
 
         /// <summary>
-        /// MyAnimeListAPI call to search the right series
-        /// </summary>
-        /// <param name="title"></param>
-        /// <param name="cancellationToken"></param>
-        /// <returns></returns>
-        public async Task<string> Search_GetSeries(string title, MyAnimeListOptions config, CancellationToken cancellationToken)
-        {
-            anime_search_names.Clear();
-            anime_search_ids.Clear();
-            string result_text = null;
-            //API
-            if (!string.IsNullOrEmpty(config.Username) && !string.IsNullOrEmpty(config.Password))
-            {
-                string WebContent = await WebRequestAPI(string.Format(SearchLink, Uri.EscapeUriString(title)), cancellationToken, config.Username, config.Password).ConfigureAwait(false);
-                int x = 0;
-                while (result_text != "")
-                {
-                    result_text = One_line_regex(new Regex(@"<entry>(.*?)<\/entry>"), WebContent, 1, x);
-                    if (result_text != "")
-                    {
-                        //get id
-                        string id = One_line_regex(new Regex(@"<id>(.*?)<\/id>"), result_text);
-                        string a_name = One_line_regex(new Regex(@"<title>(.*?)<\/title>"), result_text);
-                        string b_name = One_line_regex(new Regex(@"<english>(.*?)<\/english>"), result_text);
-                        string c_name = One_line_regex(new Regex(@"<synonyms>(.*?)<\/synonyms>"), result_text);
-
-                        if (Equals_check.Compare_strings(a_name, title))
-                        {
-                            return id;
-                        }
-                        if (Equals_check.Compare_strings(b_name, title))
-                        {
-                            return id;
-                        }
-                        foreach (string d_name in c_name.Split(';'))
-                        {
-                            if (Equals_check.Compare_strings(d_name, title))
-                            {
-                                return id;
-                            }
-                        }
-
-                        if (Int32.TryParse(id, out int n))
-                        {
-                            anime_search_names.Add(a_name);
-                            anime_search_ids.Add(id);
-                        }
-                    }
-                    x++;
-                }
-            }
-            else
-            {
-                //Fallback to Web
-                string WebContent = await WebRequestAPI(string.Format(FallbackSearchLink, Uri.EscapeUriString(title)), cancellationToken).ConfigureAwait(false);
-                string Regex_id = "-";
-                int x = 0;
-                while (!string.IsNullOrEmpty(Regex_id))
-                {
-                    Regex_id = "";
-                    Regex_id = One_line_regex(new Regex(@"(#revInfo(.*?)" + '"' + "(>(.*?)<))"), WebContent, 2, x);
-                    String Regex_name = One_line_regex(new Regex(@"(#revInfo(.*?)" + '"' + "(>(.*?)<))"), WebContent, 4, x);
-                    if (!string.IsNullOrEmpty(Regex_id) && !string.IsNullOrEmpty(Regex_name))
-                    {
-                        try
-                        {
-                            int.Parse(Regex_id);
-
-                            if (Equals_check.Compare_strings(Regex_name, title))
-                            {
-                                return Regex_id;
-                            }
-                        }
-                        catch (Exception)
-                        {
-                            //AnyLog
-                        }
-                    }
-                    else
-                    {
-                        Regex_id = "";
-                    }
-                    x++;
-                }
-
-            }
-            return "";
-        }
-
-        /// <summary>
         /// MyAnimeListAPI call to search the series and return a list
         /// </summary>
         /// <param name="title"></param>
@@ -275,7 +185,7 @@ namespace Emby.Plugins.MyAnimeList
             {
                 string WebContent = await WebRequestAPI(string.Format(SearchLink, Uri.EscapeUriString(title)), cancellationToken, config.Username, config.Password).ConfigureAwait(false);
                 int x = 0;
-                while (result_text != "")
+                while (result_text != "" && x < 50)
                 {
                     result_text = One_line_regex(new Regex(@"<entry>(.*?)<\/entry>"), WebContent, 1, x);
                     if (result_text != "")
@@ -304,7 +214,7 @@ namespace Emby.Plugins.MyAnimeList
                                 return result;
                             }
                         }
-                        if (Int32.TryParse(id, out int n))
+                        if (Int32.TryParse(id, NumberStyles.Integer, CultureInfo.InvariantCulture, out int n))
                         {
                             result.Add(id);
                         }
@@ -318,26 +228,21 @@ namespace Emby.Plugins.MyAnimeList
                 string WebContent = await WebRequestAPI(string.Format(FallbackSearchLink, Uri.EscapeUriString(title)), cancellationToken).ConfigureAwait(false);
                 string regex_id = "-";
                 int x = 0;
-                while (!string.IsNullOrEmpty(regex_id))
+                while (!string.IsNullOrEmpty(regex_id) && x < 50)
                 {
                     regex_id = "";
                     regex_id = One_line_regex(new Regex(@"(#revInfo(.*?)" + '"' + "(>(.*?)<))"), WebContent, 2, x);
                     if (!string.IsNullOrEmpty(regex_id))
                     {
-                        try
+                        if (int.TryParse(regex_id, NumberStyles.Integer, CultureInfo.InvariantCulture, out var parsedId))
                         {
-                            int.Parse(regex_id);
-
                             if (Equals_check.Compare_strings(One_line_regex(new Regex(@"(#revInfo(.*?)" + '"' + "(>(.*?)<))"), WebContent, 4, x), title))
                             {
                                 result.Add(regex_id);
                                 return result;
                             }
                         }
-                        catch (Exception)
-                        {
-                            //AnyLog
-                        }
+
                     }
                     x++;
                 }
@@ -354,28 +259,20 @@ namespace Emby.Plugins.MyAnimeList
         /// <returns></returns>
         public async Task<string> FindSeries(string title, MyAnimeListOptions config, CancellationToken cancellationToken)
         {
-            string aid = await Search_GetSeries(title, config, cancellationToken).ConfigureAwait(false);
+            var aid = (await Search_GetSeries_list(title, config, cancellationToken).ConfigureAwait(false)).FirstOrDefault();
             if (!string.IsNullOrEmpty(aid))
             {
                 return aid;
             }
-            else
-            {
-                int x = 0;
 
-                foreach (string a_name in anime_search_names)
-                {
-                    if (Equals_check.Compare_strings(a_name, title))
-                    {
-                        return anime_search_ids[x];
-                    }
-                    x++;
-                }
-            }
-            aid = await Search_GetSeries(Equals_check.Clear_name(title), config, cancellationToken).ConfigureAwait(false);
-            if (!string.IsNullOrEmpty(aid))
+            var cleanedTitle = Equals_check.Clear_name(title);
+            if (!string.Equals(cleanedTitle, title, StringComparison.OrdinalIgnoreCase))
             {
-                return aid;
+                aid = (await Search_GetSeries_list(cleanedTitle, config, cancellationToken).ConfigureAwait(false)).FirstOrDefault();
+                if (!string.IsNullOrEmpty(aid))
+                {
+                    return aid;
+                }
             }
 
             return null;

@@ -49,26 +49,6 @@ namespace Emby.Anime
 
             return a;
         }
-        public static string Half_string(string string_, int min_lenght = 0, int p = 50)
-        {
-            decimal length = 0;
-            if (((int)((decimal)string_.Length - (((decimal)string_.Length / 100m) * (decimal)p)) > min_lenght))
-            {
-                length = (decimal)string_.Length - (((decimal)string_.Length / 100m) * (decimal)p);
-            }
-            else
-            {
-                if (string_.Length < min_lenght)
-                {
-                    length = string_.Length;
-                }
-                else
-                {
-                    length = min_lenght;
-                }
-            }
-            return string_.Substring(0, (int)length);
-        }
 
         /// <summary>
         /// Clear name heavy.
@@ -108,7 +88,9 @@ namespace Emby.Anime
         {
             if (!string.IsNullOrEmpty(a) && !string.IsNullOrEmpty(b))
             {
-                if (Simple_compare(a, b))
+                if (Core_compare(a, b))
+                    return true;
+                if (Core_compare(b, a))
                     return true;
 
                 return false;
@@ -142,31 +124,6 @@ namespace Emby.Anime
                 x++;
             }
             return "";
-        }
-
-        /// <summary>
-        /// Compare 2 Strings, and it just works
-        /// SeriesA S2 == SeriesA Second Season | True;
-        /// </summary>
-        private static bool Simple_compare(string a, string b, bool fastmode = false)
-        {
-            if (fastmode)
-            {
-                if (a[0] == b[0])
-                {
-                }
-                else
-                {
-                    return false;
-                }
-            }
-
-            if (Core_compare(a, b))
-                return true;
-            if (Core_compare(b, a))
-                return true;
-
-            return false;
         }
 
         /// <summary>

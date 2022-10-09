@@ -18,7 +18,7 @@ namespace Emby.Plugins.MyAnimeList
 
         public string Key
         {
-            get { return ProviderNames.MyAnimeList; }
+            get { return MyAnimeListSeriesProvider.StaticName; }
         }
 
         public string UrlFormatString

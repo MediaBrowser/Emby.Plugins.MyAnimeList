@@ -22,13 +22,13 @@ namespace Emby.Plugins.MyAnimeList
         private readonly IHttpClient _httpClient;
         private readonly IConfigurationManager _config;
         private readonly Api _api;
-        public static string provider_name = ProviderNames.MyAnimeList;
         public int Order => 5;
-        public string Name => "MyAnimeList";
+        public static string StaticName = "MyAnimeList";
+        public string Name => StaticName;
 
         public MyAnimeListSeriesProvider(IConfigurationManager config, IHttpClient httpClient, ILogManager logManager)
         {
-            _log = logManager.GetLogger("MyAnimeList");
+            _log = logManager.GetLogger(StaticName);
             _api = new Api(_log, httpClient);
             _httpClient = httpClient;
             _config = config;
@@ -38,7 +38,7 @@ namespace Emby.Plugins.MyAnimeList
         {
             var result = new MetadataResult<Series>();
 
-            var aid = info.GetProviderId(provider_name);
+            var aid = info.GetProviderId(Name);
             if (string.IsNullOrEmpty(aid))
             {
                 aid = await _api.FindSeries(info.Name, _config.GetMyAnimeListOptions(), cancellationToken).ConfigureAwait(false);
@@ -50,7 +50,7 @@ namespace Emby.Plugins.MyAnimeList
                 result.Item = new Series();
                 result.HasMetadata = true;
 
-                result.Item.SetProviderId(provider_name, aid);
+                result.Item.SetProviderId(Name, aid);
                 result.Item.Name = _api.SelectName(WebContent, info.MetadataLanguage);
                 result.Item.Overview = _api.Get_OverviewAsync(WebContent);
                 result.ResultLanguage = "eng";
@@ -74,24 +74,56 @@ namespace Emby.Plugins.MyAnimeList
 
         public async Task<IEnumerable<RemoteSearchResult>> GetSearchResults(SeriesInfo searchInfo, CancellationToken cancellationToken)
         {
-            var results = new Dictionary<string, RemoteSearchResult>();
-
-            var aid = searchInfo.GetProviderId(provider_name);
+            var aid = searchInfo.GetProviderId(Name);
             if (!string.IsNullOrEmpty(aid))
             {
-                if (!results.ContainsKey(aid))
-                    results.Add(aid, await _api.GetAnime(aid, searchInfo.MetadataLanguage, cancellationToken).ConfigureAwait(false));
-            }
-            if (!string.IsNullOrEmpty(searchInfo.Name))
-            {
-                List<string> ids = await _api.Search_GetSeries_list(searchInfo.Name, _config.GetMyAnimeListOptions(), cancellationToken).ConfigureAwait(false);
-                foreach (string a in ids)
+                var metadata = await GetMetadata(searchInfo, cancellationToken).ConfigureAwait(false);
+
+                if (metadata.HasMetadata)
                 {
-                    results.Add(a, await _api.GetAnime(a, searchInfo.MetadataLanguage, cancellationToken).ConfigureAwait(false));
+                    return new List<RemoteSearchResult>
+                    {
+                        metadata.ToRemoteSearchResult(Name)
+                    };
                 }
             }
 
-            return results.Values;
+            if (!string.IsNullOrEmpty(searchInfo.Name))
+            {
+                var results = new List<RemoteSearchResult>();
+
+                List<string> ids = await _api.Search_GetSeries_list(searchInfo.Name, _config.GetMyAnimeListOptions(), cancellationToken).ConfigureAwait(false);
+                foreach (string a in ids)
+                {
+                    var subSearchInfo = new SeriesInfo
+                    {
+                        DisplayOrder = searchInfo.DisplayOrder,
+                        EnableAdultMetadata = searchInfo.EnableAdultMetadata,
+                        EpisodeAirDate = searchInfo.EpisodeAirDate,
+                        IndexNumber = searchInfo.IndexNumber,
+                        IsAutomated = searchInfo.IsAutomated,
+                        MetadataCountryCode = searchInfo.MetadataCountryCode,
+                        MetadataLanguage = searchInfo.MetadataLanguage,
+                        ParentIndexNumber = searchInfo.ParentIndexNumber,
+                        PremiereDate = searchInfo.PremiereDate,
+                        ProviderIds = new ProviderIdDictionary()
+                    };
+                    subSearchInfo.SetProviderId(Name, a);
+
+                    results.Add(await _api.GetAnime(a, searchInfo.MetadataLanguage, cancellationToken).ConfigureAwait(false));
+                    
+                    //var metadata = await GetMetadata(subSearchInfo, cancellationToken).ConfigureAwait(false);
+
+                    //if (metadata.HasMetadata)
+                    //{
+                    //    results.Add(metadata.ToRemoteSearchResult(Name));
+                    //}
+                }
+
+                return results;
+            }
+
+            return new List<RemoteSearchResult>();
         }
 
         public Task<HttpResponseInfo> GetImageResponse(string url, CancellationToken cancellationToken)
@@ -118,7 +150,7 @@ namespace Emby.Plugins.MyAnimeList
             _appPaths = appPaths;
         }
 
-        public string Name => "MyAnimeList";
+        public string Name => MyAnimeListSeriesProvider.StaticName;
 
         public bool Supports(BaseItem item) => item is Series || item is Season;
 
@@ -129,7 +161,7 @@ namespace Emby.Plugins.MyAnimeList
 
         public Task<IEnumerable<RemoteImageInfo>> GetImages(BaseItem item, LibraryOptions libraryOptions, CancellationToken cancellationToken)
         {
-            var seriesId = item.GetProviderId(MyAnimeListSeriesProvider.provider_name);
+            var seriesId = item.GetProviderId(MyAnimeListSeriesProvider.StaticName);
             return GetImages(seriesId, cancellationToken);
         }
 
