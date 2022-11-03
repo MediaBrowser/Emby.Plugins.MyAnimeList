@@ -28,8 +28,7 @@ namespace Emby.Plugins.MyAnimeList
                     Name = "myanimelist",
                     EmbeddedResourcePath = GetType().Namespace + ".Configuration.myanimelist.html",
                     EnableInMainMenu = true,
-                    MenuSection = "server",
-                    MenuIcon = "closed_caption"
+                    MenuIcon = "dvr"
                 },
                 new PluginPageInfo
                 {
