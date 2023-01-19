@@ -103,7 +103,7 @@ namespace Emby.Plugins.MyAnimeList
             switch (lang)
             {
                 case "en":
-                    return WebUtility.HtmlDecode(One_line_regex(new Regex("<p class="title-english title-inherit">" + @"(.*?)<"), WebContent));
+                    return WebUtility.HtmlDecode(One_line_regex(new Regex("<p class=\"title-english title-inherit\">" + @"(.*?)<"), WebContent));
 
                 case "en_alt":
                     return WebUtility.HtmlDecode(One_line_regex(new Regex(@">([\S\s]*?)<"), One_line_regex(new Regex(@"English:<\/span>(?s)(.*?)<"), WebContent)));
