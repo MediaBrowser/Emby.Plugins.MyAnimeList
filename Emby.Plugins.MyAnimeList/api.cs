@@ -101,7 +101,13 @@ namespace Emby.Plugins.MyAnimeList
             switch (lang)
             {
                 case "en":
-                    return WebUtility.HtmlDecode(One_line_regex(new Regex(@">([\S\s]*?)<"), One_line_regex(new Regex(@"English:<\/span>(?s)(.*?)<"), WebContent)));
+                    var en_title = WebUtility.HtmlDecode(One_line_regex(new Regex(@">([\S\s]*?)<"), One_line_regex(new Regex(@"English:<\/span>(?s)(.*?)<"), WebContent)));
+
+                    //Get English title from the main title section if it's not defined in the alternative titles
+                    if (string.IsNullOrWhiteSpace(en_title))
+                    {
+                        return WebUtility.HtmlDecode(One_line_regex(new Regex("<p class="title-english title-inherit">" + @"(.*?)<"), WebContent));
+                    }
 
                 case "jap":
                     return WebUtility.HtmlDecode(One_line_regex(new Regex(@">([\S\s]*?)<"), One_line_regex(new Regex(@"Japanese:<\/span>(?s)(.*?)<"), WebContent)));
