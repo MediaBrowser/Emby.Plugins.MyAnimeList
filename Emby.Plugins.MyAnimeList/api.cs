@@ -69,27 +69,25 @@ namespace Emby.Plugins.MyAnimeList
         /// <param name="cancellationToken"></param>
         /// <returns></returns>
         public string SelectName(string WebContent, string preferredMetadataLanguage)
-        {   
-            var title;
-            if (string.IsNullOrEmpty(preferredMetadataLanguage) || preferredMetadataLanguage.StartsWith("en", StringComparison.OrdinalIgnoreCase))
-            {
-                title = Get_title("en", WebContent);
-                if (string.IsNullOrWhiteSpace(title))
-                {
-                    title = Get_title("en_alt", WebContent);
-                }
-            }
+        {
             if (string.Equals(preferredMetadataLanguage, "ja", StringComparison.OrdinalIgnoreCase))
             {
-                title = Get_title("jap", WebContent);
+                var title = Get_title("jap", WebContent);
+                if (!string.IsNullOrWhiteSpace(title))
+                {
+                    return title;
+                }
             }
-            //Default to romanji title
-            if (string.IsNullOrWhiteSpace(title))
+            if (string.IsNullOrEmpty(preferredMetadataLanguage) || preferredMetadataLanguage.StartsWith("en", StringComparison.OrdinalIgnoreCase))
             {
-                title = Get_title("jap_r", WebContent);
+                var title = Get_title("en", WebContent);
+                if (!string.IsNullOrWhiteSpace(title))
+                {
+                    return title;
+                }
             }
 
-            return title;
+            return Get_title("jap_r", WebContent);
         }
 
         /// <summary>
@@ -103,14 +101,9 @@ namespace Emby.Plugins.MyAnimeList
             switch (lang)
             {
                 case "en":
-                    return WebUtility.HtmlDecode(One_line_regex(new Regex("<p class=\"title-english title-inherit\">" + @"(.*?)<"), WebContent));
-
-                case "en_alt":
                     return WebUtility.HtmlDecode(One_line_regex(new Regex(@">([\S\s]*?)<"), One_line_regex(new Regex(@"English:<\/span>(?s)(.*?)<"), WebContent)));
-
                 case "jap":
                     return WebUtility.HtmlDecode(One_line_regex(new Regex(@">([\S\s]*?)<"), One_line_regex(new Regex(@"Japanese:<\/span>(?s)(.*?)<"), WebContent)));
-
                 //Default is jap_r
                 default:
                     return WebUtility.HtmlDecode(One_line_regex(new Regex("<h1 class=\"title-name h1_bold_none\"><strong>" + @"(.*?)<"), WebContent));
