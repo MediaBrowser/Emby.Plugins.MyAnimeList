@@ -7,9 +7,8 @@ using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Xml.Linq;
-using MediaBrowser.Model.Extensions;
 
-namespace Emby.Anime
+namespace Emby.Plugins.MyAnimeList
 {
     internal static class Equals_check
     {
