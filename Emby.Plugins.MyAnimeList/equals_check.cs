@@ -68,6 +68,7 @@ namespace Emby.Plugins.MyAnimeList
             a = a.Replace("-", " ", StringComparison.OrdinalIgnoreCase);
             a = a.Replace("`", "", StringComparison.OrdinalIgnoreCase);
             a = a.Replace("'", "", StringComparison.OrdinalIgnoreCase);
+            a = a.Replace("’", "", StringComparison.OrdinalIgnoreCase);
             a = a.Replace("&", "and", StringComparison.OrdinalIgnoreCase);
             a = a.Replace(":", "", StringComparison.OrdinalIgnoreCase);
             a = a.Replace("␣", "", StringComparison.OrdinalIgnoreCase);

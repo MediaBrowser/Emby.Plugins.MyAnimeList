@@ -3,8 +3,7 @@
 
     function loadPage(page, config) {
 
-        page.querySelector('#txtUsername').value = config.Username || '';
-        page.querySelector('#txtPassword').value = config.Password || '';
+        page.querySelector('#clientID').value = config.ClientID || '';
 
         loading.hide();
     }
@@ -19,8 +18,7 @@
 
         ApiClient.getNamedConfiguration("myanimelist").then(function (config) {
 
-            config.Username = form.querySelector('#txtUsername').value;
-            config.Password = form.querySelector('#txtPassword').value;
+            config.ClientID = form.querySelector('#clientID').value;
 
             ApiClient.updateNamedConfiguration("myanimelist", config).then(Dashboard.processServerConfigurationUpdateResult);
         });
