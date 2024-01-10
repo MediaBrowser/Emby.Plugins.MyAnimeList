@@ -35,6 +35,8 @@ namespace Emby.Plugins.MyAnimeList
         public static string Clear_name(string a)
         {
             a = a.Trim().ReplaceSafe(One_line_regex(new Regex(@"(?s) \(.*?\)"), a.Trim(), 0), "", StringComparison.OrdinalIgnoreCase);
+            a = a.Trim().ReplaceSafe(One_line_regex(new Regex(@"(?s) \[tvdb.*?\]"), a.Trim(), 0), "", StringComparison.OrdinalIgnoreCase);
+            a = a.Trim().ReplaceSafe(One_line_regex(new Regex(@"(?s) \{tvdb.*?\}"), a.Trim(), 0), "", StringComparison.OrdinalIgnoreCase);
 
             a = a.Replace(".", " ", StringComparison.OrdinalIgnoreCase);
             a = a.Replace("-", " ", StringComparison.OrdinalIgnoreCase);
@@ -65,6 +67,8 @@ namespace Emby.Plugins.MyAnimeList
             a = a.Trim().ReplaceSafe(One_line_regex(new Regex(@"(?s) \(.*?\)"), a.Trim(), 0), "", StringComparison.OrdinalIgnoreCase);
 
             a = a.Replace(".", " ", StringComparison.OrdinalIgnoreCase);
+            a = a.Replace("!", " ", StringComparison.OrdinalIgnoreCase);
+            a = a.Replace("?", " ", StringComparison.OrdinalIgnoreCase);
             a = a.Replace("-", " ", StringComparison.OrdinalIgnoreCase);
             a = a.Replace("`", "", StringComparison.OrdinalIgnoreCase);
             a = a.Replace("'", "", StringComparison.OrdinalIgnoreCase);
