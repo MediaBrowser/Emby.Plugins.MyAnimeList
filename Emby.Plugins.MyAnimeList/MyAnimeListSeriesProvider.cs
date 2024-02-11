@@ -12,6 +12,7 @@ using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
 using MediaBrowser.Model.Configuration;
+using MediaBrowser.Model.Serialization;
 
 namespace Emby.Plugins.MyAnimeList
 {
@@ -20,109 +21,61 @@ namespace Emby.Plugins.MyAnimeList
         private readonly ILogger _log;
         private readonly IHttpClient _httpClient;
         private readonly IConfigurationManager _config;
+        private readonly IJsonSerializer _jsonSerializer;
         private readonly Api _api;
         public int Order => 5;
         public static string StaticName = "MyAnimeList";
         public string Name => StaticName;
 
-        public MyAnimeListSeriesProvider(IConfigurationManager config, IHttpClient httpClient, ILogManager logManager)
+        public MyAnimeListSeriesProvider(IConfigurationManager config, IHttpClient httpClient, IJsonSerializer jsonSerializer, ILogManager logManager)
         {
             _log = logManager.GetLogger(StaticName);
-            _api = new Api(_log, httpClient);
             _httpClient = httpClient;
+            _jsonSerializer = jsonSerializer;
             _config = config;
+            _api = new Api(_log, _httpClient, _jsonSerializer);
         }
 
         public async Task<MetadataResult<Series>> GetMetadata(SeriesInfo info, CancellationToken cancellationToken)
         {
+            _api.preferredMetadataLanguage = info.MetadataLanguage;
+            _api.clientID = _config.GetMyAnimeListOptions().ClientID;
             var result = new MetadataResult<Series>();
 
             var aid = info.GetProviderId(Name);
             if (string.IsNullOrEmpty(aid))
             {
-                aid = await _api.FindSeries(info.Name, _config.GetMyAnimeListOptions(), cancellationToken).ConfigureAwait(false);
+                aid = await _api.FindSeries(info.Name, cancellationToken).ConfigureAwait(false);
             }
 
             if (!string.IsNullOrEmpty(aid))
             {
-                string WebContent = await _api.WebRequestAPI(_api.anime_link + aid, cancellationToken).ConfigureAwait(false);
-                result.Item = new Series();
-                result.HasMetadata = true;
-
-                result.Item.SetProviderId(Name, aid);
-                result.Item.Name = _api.SelectName(WebContent, info.MetadataLanguage);
-                result.Item.Overview = _api.Get_OverviewAsync(WebContent);
-                result.ResultLanguage = "eng";
-                try
-                {
-                    result.Item.CommunityRating = float.Parse(_api.Get_RatingAsync(WebContent), System.Globalization.CultureInfo.InvariantCulture);
-                }
-                catch (Exception) { }
-                foreach (var genre in _api.Get_Genre(WebContent))
-                {
-                    if (!string.IsNullOrEmpty(genre))
-                    {
-                        result.Item.AddGenre(genre);
-                    }
-                }
-                GenreHelper.CleanupGenres(result.Item);
-                //StoreImageUrl(aid, _api.Get_ImageUrlAsync(WebContent), "image");
+                result = await _api.GetMetadata(aid, cancellationToken);
             }
             return result;
         }
 
         public async Task<IEnumerable<RemoteSearchResult>> GetSearchResults(SeriesInfo searchInfo, CancellationToken cancellationToken)
         {
+            _api.preferredMetadataLanguage = searchInfo.MetadataLanguage;
+            _api.clientID = _config.GetMyAnimeListOptions().ClientID;
+            var results = new Dictionary<string, RemoteSearchResult>();
             var aid = searchInfo.GetProviderId(Name);
             if (!string.IsNullOrEmpty(aid))
             {
-                var metadata = await GetMetadata(searchInfo, cancellationToken).ConfigureAwait(false);
-
-                if (metadata.HasMetadata)
-                {
-                    return new List<RemoteSearchResult>
-                    {
-                        metadata.ToRemoteSearchResult(Name)
-                    };
-                }
+                results.Add(aid, await _api.GetAnime(aid, cancellationToken));
             }
 
             if (!string.IsNullOrEmpty(searchInfo.Name))
             {
-                var results = new List<RemoteSearchResult>();
-
-                List<string> ids = await _api.Search_GetSeries_list(searchInfo.Name, _config.GetMyAnimeListOptions(), cancellationToken).ConfigureAwait(false);
+                List<string> ids = await _api.Search_GetSeries_list(searchInfo.Name, cancellationToken).ConfigureAwait(false);
                 foreach (string a in ids)
                 {
-                    var subSearchInfo = new SeriesInfo
-                    {
-                        DisplayOrder = searchInfo.DisplayOrder,
-                        EnableAdultMetadata = searchInfo.EnableAdultMetadata,
-                        EpisodeAirDate = searchInfo.EpisodeAirDate,
-                        IndexNumber = searchInfo.IndexNumber,
-                        IsAutomated = searchInfo.IsAutomated,
-                        MetadataCountryCode = searchInfo.MetadataCountryCode,
-                        MetadataLanguage = searchInfo.MetadataLanguage,
-                        ParentIndexNumber = searchInfo.ParentIndexNumber,
-                        PremiereDate = searchInfo.PremiereDate,
-                        ProviderIds = new ProviderIdDictionary()
-                    };
-                    subSearchInfo.SetProviderId(Name, a);
-
-                    results.Add(await _api.GetAnime(a, searchInfo.MetadataLanguage, cancellationToken).ConfigureAwait(false));
-                    
-                    //var metadata = await GetMetadata(subSearchInfo, cancellationToken).ConfigureAwait(false);
-
-                    //if (metadata.HasMetadata)
-                    //{
-                    //    results.Add(metadata.ToRemoteSearchResult(Name));
-                    //}
+                    results.Add(a, await _api.GetAnime(a, cancellationToken));
                 }
-
-                return results;
             }
 
-            return new List<RemoteSearchResult>();
+            return results.Values;
         }
 
         public Task<HttpResponseInfo> GetImageResponse(string url, CancellationToken cancellationToken)
@@ -137,16 +90,21 @@ namespace Emby.Plugins.MyAnimeList
 
     public class MyAnimeListSeriesImageProvider : IRemoteImageProvider
     {
+        private readonly ILogger _log;
         private readonly IHttpClient _httpClient;
         private readonly IApplicationPaths _appPaths;
+        private readonly IJsonSerializer _jsonSerializer;
+        private readonly IConfigurationManager _config;
         private readonly Api _api;
 
-        public MyAnimeListSeriesImageProvider(IHttpClient httpClient, IApplicationPaths appPaths, ILogManager logManager)
+        public MyAnimeListSeriesImageProvider(IHttpClient httpClient, IJsonSerializer jsonSerializer, IApplicationPaths appPaths, ILogManager logManager, IConfigurationManager config)
         {
-            var logger = logManager.GetLogger("MyAnimeList");
-            _api = new Api(logger, httpClient);
+            _log = logManager.GetLogger(MyAnimeListSeriesProvider.StaticName);
             _httpClient = httpClient;
+            _jsonSerializer = jsonSerializer;
             _appPaths = appPaths;
+            _config = config;
+            _api = new Api(_log, _httpClient, _jsonSerializer);
         }
 
         public string Name => MyAnimeListSeriesProvider.StaticName;
@@ -166,17 +124,11 @@ namespace Emby.Plugins.MyAnimeList
 
         public async Task<IEnumerable<RemoteImageInfo>> GetImages(string aid, CancellationToken cancellationToken)
         {
+            _api.clientID = _config.GetMyAnimeListOptions().ClientID;
             var list = new List<RemoteImageInfo>();
-
             if (!string.IsNullOrEmpty(aid))
             {
-                var primary = _api.Get_ImageUrlAsync(await _api.WebRequestAPI(_api.anime_link + aid, cancellationToken).ConfigureAwait(false));
-                list.Add(new RemoteImageInfo
-                {
-                    ProviderName = Name,
-                    Type = ImageType.Primary,
-                    Url = primary
-                });
+                list = await _api.Get_RemoteImageListAsync(aid, cancellationToken).ConfigureAwait(false);
             }
             return list;
         }

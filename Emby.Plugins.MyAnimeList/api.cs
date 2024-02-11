@@ -13,6 +13,12 @@ using System.IO;
 using MediaBrowser.Model.Net;
 using System.Linq;
 using System.Globalization;
+using MediaBrowser.Model.Serialization;
+using static MediaBrowser.Common.Updates.GithubUpdater;
+using MediaBrowser.Controller.Entities.TV;
+using MediaBrowser.Controller.Providers;
+using System.Security.Cryptography;
+using System.Xml.Linq;
 
 namespace Emby.Plugins.MyAnimeList
 {
@@ -22,14 +28,18 @@ namespace Emby.Plugins.MyAnimeList
     public class Api
     {
         private static ILogger _logger;
-        //Use API too search
-        public string SearchLink = "https://myanimelist.net/api/anime/search.xml?q={0}";
-        //Web Fallback search
+        private static IJsonSerializer _jsonSerializer;
+        //API v2 
+        public string SearchLink = "https://api.myanimelist.net/v2/anime?q={0}&fields=alternative_titles&limit=10";
+        public string AnimeLink = "https://api.myanimelist.net/v2/anime/{0}?fields=id,title,main_picture,alternative_titles,start_date,end_date,synopsis,mean,status,genres,broadcast,source,pictures,background,studios";
+        //Web Fallback
         public string FallbackSearchLink = "https://myanimelist.net/search/all?q={0}";
-        //No API funktion exist too get anime
-        public string anime_link = "https://myanimelist.net/anime/";
+        public string FallbackAnimeLink = "https://myanimelist.net/anime/";
 
         private IHttpClient _httpClient;
+
+        public string clientID { get; set; }
+        public string preferredMetadataLanguage { get; set; }
 
         /// <summary>
         /// WebContent API call to get a anime with id
@@ -37,37 +47,152 @@ namespace Emby.Plugins.MyAnimeList
         /// <param name="id"></param>
         /// <param name="cancellationToken"></param>
         /// <returns></returns>
-        public Api(ILogger logger, IHttpClient httpClient)
+        public Api(ILogger logger, IHttpClient httpClient, IJsonSerializer jsonSerializer, string clientID = "", string preferredMetadataLanguage = "eng")
         {
             _logger = logger;
             _httpClient = httpClient;
+            _jsonSerializer = jsonSerializer;
+            this.clientID = clientID;
+            this.preferredMetadataLanguage = preferredMetadataLanguage;
         }
-        public async Task<RemoteSearchResult> GetAnime(string id, string preferredMetadataLanguage, CancellationToken cancellationToken)
+
+        public async Task<MetadataResult<Series>> GetMetadata(string id, CancellationToken cancellationToken)
         {
-            var WebContent = await WebRequestAPI(anime_link + id, cancellationToken).ConfigureAwait(false);
-
-            var result = new RemoteSearchResult
+            var result = new MetadataResult<Series>();
+            //API
+            if (!string.IsNullOrEmpty(clientID))
             {
-                Name = SelectName(WebContent, preferredMetadataLanguage)
-            };
+                string json = await WebRequestAPI(string.Format(AnimeLink, id), cancellationToken, clientID).ConfigureAwait(false);
+                AnimeObject anime = _jsonSerializer.DeserializeFromString<AnimeObject>(json);
+                result.Item = new Series();
+                result.HasMetadata = true;
 
-            result.SearchProviderName = MyAnimeListSeriesProvider.StaticName;
-            result.ImageUrl = Get_ImageUrlAsync(WebContent);
-            result.SetProviderId(MyAnimeListSeriesProvider.StaticName, id);
-            result.Overview = Get_OverviewAsync(WebContent);
+                result.Item.SetProviderId(MyAnimeListSeriesProvider.StaticName, id);
+                result.Item.Name = SelectName(anime);
+                result.Item.OriginalTitle = anime.title;
+                result.Item.Overview = anime.synopsis;
+                if (!string.IsNullOrEmpty(anime.background))
+                {
+                    result.Item.Overview += "\n\nBackground: " + anime.background;
+                }
+                result.ResultLanguage = "eng";
+                result.Item.CommunityRating = anime.mean;
+
+                foreach (var studio in anime.studios)
+                {
+                    if (!string.IsNullOrEmpty(studio.name))
+                    {
+                        result.Item.AddStudio(studio.name);
+                    }
+                }
+
+                foreach (var genre in anime.genres)
+                {
+                    if (!string.IsNullOrEmpty(genre.name))
+                    {
+                        result.Item.AddGenre(genre.name);
+                    }
+                }
+
+                GenreHelper.CleanupGenres(result.Item);
+            }
+            else
+            {
+                //Fallback to Web
+                string WebContent = await WebRequestAPI(FallbackAnimeLink + id, cancellationToken).ConfigureAwait(false);
+                result.Item = new Series();
+                result.HasMetadata = true;
+
+                result.Item.SetProviderId(MyAnimeListSeriesProvider.StaticName, id);
+                result.Item.Name = SelectNameFallback(WebContent);
+                result.Item.Overview = Get_OverviewAsync(WebContent);
+                result.ResultLanguage = "eng";
+                try
+                {
+                    result.Item.CommunityRating = float.Parse(Get_RatingAsync(WebContent), System.Globalization.CultureInfo.InvariantCulture);
+                }
+                catch (Exception) { }
+                foreach (var genre in Get_Genre(WebContent))
+                {
+                    if (!string.IsNullOrEmpty(genre))
+                    {
+                        result.Item.AddGenre(genre);
+                    }
+                }
+                GenreHelper.CleanupGenres(result.Item);
+            }
+
+            return result;
+        }
+
+        public async Task<RemoteSearchResult> GetAnime(string id, CancellationToken cancellationToken)
+        {
+            var result = new RemoteSearchResult();
+            //API
+            if (!string.IsNullOrEmpty(clientID))
+            {
+                string json = await WebRequestAPI(string.Format(AnimeLink, id), cancellationToken, clientID).ConfigureAwait(false);
+                AnimeObject anime = _jsonSerializer.DeserializeFromString<AnimeObject>(json);
+                result.Name = SelectName(anime);
+                result.SearchProviderName = MyAnimeListSeriesProvider.StaticName;
+                result.ImageUrl = anime.main_picture.large;
+                result.SetProviderId(MyAnimeListSeriesProvider.StaticName, id);
+                result.Overview = anime.synopsis;
+            }
+            else
+            {
+                //Fallback to Web
+                var WebContent = await WebRequestAPI(FallbackAnimeLink + id, cancellationToken).ConfigureAwait(false);
+                result.Name = SelectNameFallback(WebContent);
+                result.SearchProviderName = MyAnimeListSeriesProvider.StaticName;
+                result.ImageUrl = Get_ImageUrlAsync(WebContent);
+                result.SetProviderId(MyAnimeListSeriesProvider.StaticName, id);
+                result.Overview = Get_OverviewAsync(WebContent);
+
+            }
 
             return result;
         }
 
         /// <summary>
-        ///  WebContent API call to select a prefence title
+        ///  API call to select a prefence title
+        /// </summary>
+        /// <param name="AnimeObject"></param>
+        /// <param name="preference"></param>
+        /// <param name="language"></param>
+        /// <param name="cancellationToken"></param>
+        /// <returns></returns>
+        public string SelectName(AnimeObject animeObject)
+        {
+            if (string.Equals(preferredMetadataLanguage, "ja", StringComparison.OrdinalIgnoreCase))
+            {
+                var title = animeObject.alternative_titles.ja;
+                if (!string.IsNullOrWhiteSpace(title))
+                {
+                    return title;
+                }
+            }
+            if (string.IsNullOrEmpty(preferredMetadataLanguage) || preferredMetadataLanguage.StartsWith("en", StringComparison.OrdinalIgnoreCase))
+            {
+                var title = animeObject.alternative_titles.en;
+                if (!string.IsNullOrWhiteSpace(title))
+                {
+                    return title;
+                }
+            }
+
+            return animeObject.title;
+        }
+
+        /// <summary>
+        ///  WebContent call to select a prefence title
         /// </summary>
         /// <param name="WebContent"></param>
         /// <param name="preference"></param>
         /// <param name="language"></param>
         /// <param name="cancellationToken"></param>
         /// <returns></returns>
-        public string SelectName(string WebContent, string preferredMetadataLanguage)
+        public string SelectNameFallback(string WebContent)
         {
             if (string.Equals(preferredMetadataLanguage, "ja", StringComparison.OrdinalIgnoreCase))
             {
@@ -100,7 +225,7 @@ namespace Emby.Plugins.MyAnimeList
             switch (lang)
             {
                 case "en":
-                    return WebUtility.HtmlDecode(One_line_regex(new Regex(@">([\S\s]*?)<"), One_line_regex(new Regex(@"English:<\/span>(?s)(.*?)<"), WebContent)));
+                    return WebUtility.HtmlDecode(One_line_regex(new Regex("<p class=\"title-english title-inherit\">" + @"(.*?)<"), WebContent));
                 case "jap":
                     return WebUtility.HtmlDecode(One_line_regex(new Regex(@">([\S\s]*?)<"), One_line_regex(new Regex(@"Japanese:<\/span>(?s)(.*?)<"), WebContent)));
                 //Default is jap_r
@@ -158,6 +283,46 @@ namespace Emby.Plugins.MyAnimeList
         }
 
         /// <summary>
+        /// WebContent API call to get the RemoteImageList
+        /// </summary>
+        /// <param name="id"></param>
+        /// <param name="cancellationToken"></param>
+        /// <returns></returns>
+        public async Task<List<RemoteImageInfo>> Get_RemoteImageListAsync(string id, CancellationToken cancellationToken)
+        {
+            List<RemoteImageInfo> result = new List<RemoteImageInfo>();
+            //API
+            if (!string.IsNullOrEmpty(clientID))
+            {
+                string json = await WebRequestAPI(string.Format(AnimeLink, id), cancellationToken, clientID).ConfigureAwait(false);
+                AnimeObject anime = _jsonSerializer.DeserializeFromString<AnimeObject>(json);
+                foreach (Picture picture in anime.pictures)
+                {
+                    result.Add(new RemoteImageInfo
+                    {
+                        ProviderName = MyAnimeListSeriesProvider.StaticName,
+                        Type = ImageType.Primary,
+                        Url = picture.large
+                    });
+                }
+            }
+            else
+            {
+                //Fallback to Web
+                var WebContent = await WebRequestAPI(FallbackAnimeLink + id, cancellationToken).ConfigureAwait(false);
+                result.Add(new RemoteImageInfo
+                {
+                    ProviderName = MyAnimeListSeriesProvider.StaticName,
+                    Type = ImageType.Primary,
+                    Url = One_line_regex(new Regex("src=\"(?s)(.*?)\""), One_line_regex(new Regex("<div style=\"text-align: center;\">(?s)(.+?)alt="), WebContent))
+                });
+
+            }
+            return result;
+        }
+
+
+        /// <summary>
         /// WebContent API call to get the description
         /// </summary>
         /// <param name="WebContent"></param>
@@ -173,50 +338,34 @@ namespace Emby.Plugins.MyAnimeList
         /// <param name="title"></param>
         /// <param name="cancellationToken"></param>
         /// <returns></returns>
-        public async Task<List<string>> Search_GetSeries_list(string title, MyAnimeListOptions config, CancellationToken cancellationToken)
+        public async Task<List<string>> Search_GetSeries_list(string title, CancellationToken cancellationToken)
         {
             List<string> result = new List<string>();
-            string result_text = null;
             //API
-            if (!string.IsNullOrEmpty(config.Username) && !string.IsNullOrEmpty(config.Password))
+            if (!string.IsNullOrEmpty(clientID))
             {
-                string WebContent = await WebRequestAPI(string.Format(SearchLink, Uri.EscapeUriString(title)), cancellationToken, config.Username, config.Password).ConfigureAwait(false);
-                int x = 0;
-                while (result_text != "" && x < 50)
+                string json = await WebRequestAPI(string.Format(SearchLink, Uri.EscapeUriString(title)), cancellationToken, clientID).ConfigureAwait(false);
+                SearchObject search = _jsonSerializer.DeserializeFromString<SearchObject>(json);
+                foreach (SearchData data in search.data)
                 {
-                    result_text = One_line_regex(new Regex(@"<entry>(.*?)<\/entry>"), WebContent, 1, x);
-                    if (result_text != "")
-                    {
-                        //get id
-                        string id = One_line_regex(new Regex(@"<id>(.*?)<\/id>"), result_text);
-                        string a_name = One_line_regex(new Regex(@"<title>(.*?)<\/title>"), result_text);
-                        string b_name = One_line_regex(new Regex(@"<english>(.*?)<\/english>"), result_text);
-                        string c_name = One_line_regex(new Regex(@"<synonyms>(.*?)<\/synonyms>"), result_text);
+                    //get id
 
-                        if (Equals_check.Compare_strings(a_name, title))
+                    try
+                    {
+                        if (Equals_check.Compare_strings(data.node.title, title))
                         {
-                            result.Add(id);
-                            return result;
+                            result.Add(data.node.id.ToString());
                         }
-                        if (Equals_check.Compare_strings(b_name, title))
+                        if (Equals_check.Compare_strings(data.node.alternative_titles.en, title))
                         {
-                            result.Add(id);
-                            return result;
+                            result.Add(data.node.id.ToString());
                         }
-                        foreach (string d_name in c_name.Split(';'))
+                        if (Equals_check.Compare_strings(data.node.alternative_titles.ja, title))
                         {
-                            if (Equals_check.Compare_strings(d_name, title))
-                            {
-                                result.Add(id);
-                                return result;
-                            }
-                        }
-                        if (Int32.TryParse(id, NumberStyles.Integer, CultureInfo.InvariantCulture, out int n))
-                        {
-                            result.Add(id);
+                            result.Add(data.node.id.ToString());
                         }
                     }
-                    x++;
+                    catch (Exception) { }
                 }
             }
             else
@@ -254,9 +403,9 @@ namespace Emby.Plugins.MyAnimeList
         /// <param name="title"></param>
         /// <param name="cancellationToken"></param>
         /// <returns></returns>
-        public async Task<string> FindSeries(string title, MyAnimeListOptions config, CancellationToken cancellationToken)
+        public async Task<string> FindSeries(string title, CancellationToken cancellationToken)
         {
-            var aid = (await Search_GetSeries_list(title, config, cancellationToken).ConfigureAwait(false)).FirstOrDefault();
+            var aid = (await Search_GetSeries_list(title, cancellationToken).ConfigureAwait(false)).FirstOrDefault();
             if (!string.IsNullOrEmpty(aid))
             {
                 return aid;
@@ -265,7 +414,7 @@ namespace Emby.Plugins.MyAnimeList
             var cleanedTitle = Equals_check.Clear_name(title);
             if (!string.Equals(cleanedTitle, title, StringComparison.OrdinalIgnoreCase))
             {
-                aid = (await Search_GetSeries_list(cleanedTitle, config, cancellationToken).ConfigureAwait(false)).FirstOrDefault();
+                aid = (await Search_GetSeries_list(cleanedTitle, cancellationToken).ConfigureAwait(false)).FirstOrDefault();
                 if (!string.IsNullOrEmpty(aid))
                 {
                     return aid;
@@ -305,7 +454,7 @@ namespace Emby.Plugins.MyAnimeList
         /// <param name="name"></param>
         /// <param name="pw"></param>
         /// <returns></returns>
-        public async Task<string> WebRequestAPI(string link, CancellationToken cancellationToken, string name = null, string pw = null)
+        public async Task<string> WebRequestAPI(string link, CancellationToken cancellationToken, string clientId = null)
         {
             try
             {
@@ -315,11 +464,9 @@ namespace Emby.Plugins.MyAnimeList
                     Url = link
                 };
 
-                if (!string.IsNullOrEmpty(name) && !string.IsNullOrEmpty(pw))
+                if (!string.IsNullOrEmpty(clientId))
                 {
-                    var encoded = Convert.ToBase64String(Encoding.GetEncoding("ISO-8859-1").GetBytes(name + ":" + pw));
-
-                    options.RequestHeaders["Authorization"] = "Basic " + encoded;
+                    options.RequestHeaders["X-MAL-CLIENT-ID"] = clientId;
                 }
 
                 using (var stream = await _httpClient.Get(options).ConfigureAwait(false))
