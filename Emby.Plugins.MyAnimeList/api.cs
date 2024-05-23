@@ -39,7 +39,6 @@ namespace Emby.Plugins.MyAnimeList
         private IHttpClient _httpClient;
 
         public string clientID { get; set; }
-        public string preferredMetadataLanguage { get; set; }
 
         /// <summary>
         /// WebContent API call to get a anime with id
@@ -47,16 +46,15 @@ namespace Emby.Plugins.MyAnimeList
         /// <param name="id"></param>
         /// <param name="cancellationToken"></param>
         /// <returns></returns>
-        public Api(ILogger logger, IHttpClient httpClient, IJsonSerializer jsonSerializer, string clientID = "", string preferredMetadataLanguage = "eng")
+        public Api(ILogger logger, IHttpClient httpClient, IJsonSerializer jsonSerializer, string clientID = "")
         {
             _logger = logger;
             _httpClient = httpClient;
             _jsonSerializer = jsonSerializer;
             this.clientID = clientID;
-            this.preferredMetadataLanguage = preferredMetadataLanguage;
         }
 
-        public async Task<MetadataResult<Series>> GetMetadata(string id, CancellationToken cancellationToken)
+        public async Task<MetadataResult<Series>> GetMetadata(string id, string preferredMetadataLanguage, CancellationToken cancellationToken)
         {
             var result = new MetadataResult<Series>();
             //API
@@ -68,7 +66,7 @@ namespace Emby.Plugins.MyAnimeList
                 result.HasMetadata = true;
 
                 result.Item.SetProviderId(MyAnimeListSeriesProvider.StaticName, id);
-                result.Item.Name = SelectName(anime);
+                result.Item.Name = SelectName(anime, preferredMetadataLanguage);
                 result.Item.OriginalTitle = anime.title;
                 result.Item.Overview = anime.synopsis;
                 if (!string.IsNullOrEmpty(anime.background))
@@ -104,7 +102,7 @@ namespace Emby.Plugins.MyAnimeList
                 result.HasMetadata = true;
 
                 result.Item.SetProviderId(MyAnimeListSeriesProvider.StaticName, id);
-                result.Item.Name = SelectNameFallback(WebContent);
+                result.Item.Name = SelectNameFallback(WebContent, preferredMetadataLanguage);
                 result.Item.Overview = Get_OverviewAsync(WebContent);
                 result.ResultLanguage = "eng";
                 try
@@ -125,7 +123,7 @@ namespace Emby.Plugins.MyAnimeList
             return result;
         }
 
-        public async Task<RemoteSearchResult> GetAnime(string id, CancellationToken cancellationToken)
+        public async Task<RemoteSearchResult> GetAnime(string id, string preferredMetadataLanguage, CancellationToken cancellationToken)
         {
             var result = new RemoteSearchResult();
             //API
@@ -133,7 +131,7 @@ namespace Emby.Plugins.MyAnimeList
             {
                 string json = await WebRequestAPI(string.Format(AnimeLink, id), cancellationToken, clientID).ConfigureAwait(false);
                 AnimeObject anime = _jsonSerializer.DeserializeFromString<AnimeObject>(json);
-                result.Name = SelectName(anime);
+                result.Name = SelectName(anime, preferredMetadataLanguage);
                 result.SearchProviderName = MyAnimeListSeriesProvider.StaticName;
                 result.ImageUrl = anime.main_picture.large;
                 result.SetProviderId(MyAnimeListSeriesProvider.StaticName, id);
@@ -143,7 +141,7 @@ namespace Emby.Plugins.MyAnimeList
             {
                 //Fallback to Web
                 var WebContent = await WebRequestAPI(FallbackAnimeLink + id, cancellationToken).ConfigureAwait(false);
-                result.Name = SelectNameFallback(WebContent);
+                result.Name = SelectNameFallback(WebContent, preferredMetadataLanguage);
                 result.SearchProviderName = MyAnimeListSeriesProvider.StaticName;
                 result.ImageUrl = Get_ImageUrlAsync(WebContent);
                 result.SetProviderId(MyAnimeListSeriesProvider.StaticName, id);
@@ -162,9 +160,9 @@ namespace Emby.Plugins.MyAnimeList
         /// <param name="language"></param>
         /// <param name="cancellationToken"></param>
         /// <returns></returns>
-        public string SelectName(AnimeObject animeObject)
+        public string SelectName(AnimeObject animeObject, string preferredMetadataLanguage)
         {
-            if (string.Equals(preferredMetadataLanguage, "ja", StringComparison.OrdinalIgnoreCase))
+            if ((preferredMetadataLanguage ?? string.Empty).StartsWith("ja", StringComparison.OrdinalIgnoreCase))
             {
                 var title = animeObject.alternative_titles.ja;
                 if (!string.IsNullOrWhiteSpace(title))
@@ -192,9 +190,9 @@ namespace Emby.Plugins.MyAnimeList
         /// <param name="language"></param>
         /// <param name="cancellationToken"></param>
         /// <returns></returns>
-        public string SelectNameFallback(string WebContent)
+        public string SelectNameFallback(string WebContent, string preferredMetadataLanguage)
         {
-            if (string.Equals(preferredMetadataLanguage, "ja", StringComparison.OrdinalIgnoreCase))
+            if ((preferredMetadataLanguage ?? string.Empty).StartsWith("ja", StringComparison.OrdinalIgnoreCase))
             {
                 var title = Get_title("jap", WebContent);
                 if (!string.IsNullOrWhiteSpace(title))

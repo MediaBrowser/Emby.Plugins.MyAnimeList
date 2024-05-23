@@ -36,34 +36,32 @@ namespace Emby.Plugins.MyAnimeList
             _api = new Api(_log, _httpClient, _jsonSerializer);
         }
 
-        public async Task<MetadataResult<Series>> GetMetadata(SeriesInfo info, CancellationToken cancellationToken)
+        public async Task<MetadataResult<Series>> GetMetadata(SeriesInfo searchInfo, CancellationToken cancellationToken)
         {
-            _api.preferredMetadataLanguage = info.MetadataLanguage;
             _api.clientID = _config.GetMyAnimeListOptions().ClientID;
             var result = new MetadataResult<Series>();
 
-            var aid = info.GetProviderId(Name);
+            var aid = searchInfo.GetProviderId(Name);
             if (string.IsNullOrEmpty(aid))
             {
-                aid = await _api.FindSeries(info.Name, cancellationToken).ConfigureAwait(false);
+                aid = await _api.FindSeries(searchInfo.Name, cancellationToken).ConfigureAwait(false);
             }
 
             if (!string.IsNullOrEmpty(aid))
             {
-                result = await _api.GetMetadata(aid, cancellationToken);
+                result = await _api.GetMetadata(aid, searchInfo.MetadataLanguage, cancellationToken);
             }
             return result;
         }
 
         public async Task<IEnumerable<RemoteSearchResult>> GetSearchResults(SeriesInfo searchInfo, CancellationToken cancellationToken)
         {
-            _api.preferredMetadataLanguage = searchInfo.MetadataLanguage;
             _api.clientID = _config.GetMyAnimeListOptions().ClientID;
             var results = new Dictionary<string, RemoteSearchResult>();
             var aid = searchInfo.GetProviderId(Name);
             if (!string.IsNullOrEmpty(aid))
             {
-                results.Add(aid, await _api.GetAnime(aid, cancellationToken));
+                results.Add(aid, await _api.GetAnime(aid, searchInfo.MetadataLanguage, cancellationToken));
             }
 
             if (!string.IsNullOrEmpty(searchInfo.Name))
@@ -71,7 +69,7 @@ namespace Emby.Plugins.MyAnimeList
                 List<string> ids = await _api.Search_GetSeries_list(searchInfo.Name, cancellationToken).ConfigureAwait(false);
                 foreach (string a in ids)
                 {
-                    results.Add(a, await _api.GetAnime(a, cancellationToken));
+                    results.Add(a, await _api.GetAnime(a, searchInfo.MetadataLanguage, cancellationToken));
                 }
             }
 
