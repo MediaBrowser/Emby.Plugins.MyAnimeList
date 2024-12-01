@@ -223,12 +223,12 @@ namespace Emby.Plugins.MyAnimeList
             switch (lang)
             {
                 case "en":
-                    return WebUtility.HtmlDecode(One_line_regex(new Regex("<p class=\"title-english title-inherit\">" + @"(.*?)<"), WebContent));
+                    return WebUtility.HtmlDecode(One_line_regex(new Regex("<p class=\"title-english title-inherit\">" + @"(.*?)<", RegexOptions.IgnoreCase), WebContent));
                 case "jap":
-                    return WebUtility.HtmlDecode(One_line_regex(new Regex(@">([\S\s]*?)<"), One_line_regex(new Regex(@"Japanese:<\/span>(?s)(.*?)<"), WebContent)));
+                    return WebUtility.HtmlDecode(One_line_regex(new Regex(@">([\S\s]*?)<", RegexOptions.IgnoreCase), One_line_regex(new Regex(@"Japanese:<\/span>(?s)(.*?)<", RegexOptions.IgnoreCase), WebContent)));
                 //Default is jap_r
                 default:
-                    return WebUtility.HtmlDecode(One_line_regex(new Regex("<h1 class=\"title-name h1_bold_none\"><strong>" + @"(.*?)<"), WebContent));
+                    return WebUtility.HtmlDecode(One_line_regex(new Regex("<h1 class=\"title-name h1_bold_none\"><strong>" + @"(.*?)<", RegexOptions.IgnoreCase), WebContent));
             }
         }
 
@@ -242,7 +242,7 @@ namespace Emby.Plugins.MyAnimeList
             List<string> result = new List<string>();
             try
             {
-                var regex = new Regex("<a href=\"/anime/genre/.+?\" title=\".+?\">(.+?)</a>");
+                var regex = new Regex("<a href=\"/anime/genre/.+?\" title=\".+?\">(.+?)</a>", RegexOptions.IgnoreCase);
                 var genres = regex.Matches(WebContent);
                 foreach (Match match in genres)
                 {
@@ -267,7 +267,7 @@ namespace Emby.Plugins.MyAnimeList
         /// <param name="WebContent"></param>
         public string Get_RatingAsync(string WebContent)
         {
-            return One_line_regex(new Regex("<span itemprop=\"ratingValue\" class=\"score-label score-.*?\">" + @"(.*?)<"), WebContent);
+            return One_line_regex(new Regex("<span itemprop=\"ratingValue\" class=\"score-label score-.*?\">" + @"(.*?)<", RegexOptions.IgnoreCase), WebContent);
         }
 
         /// <summary>
@@ -277,7 +277,7 @@ namespace Emby.Plugins.MyAnimeList
         /// <returns></returns>
         public string Get_ImageUrlAsync(string WebContent)
         {
-            return One_line_regex(new Regex("src=\"(?s)(.*?)\""), One_line_regex(new Regex("<div style=\"text-align: center;\">(?s)(.+?)alt="), WebContent));
+            return One_line_regex(new Regex("src=\"(?s)(.*?)\"", RegexOptions.IgnoreCase), One_line_regex(new Regex("<div style=\"text-align: center;\">(?s)(.+?)alt=", RegexOptions.IgnoreCase), WebContent));
         }
 
         /// <summary>
@@ -312,7 +312,7 @@ namespace Emby.Plugins.MyAnimeList
                 {
                     ProviderName = MyAnimeListSeriesProvider.StaticName,
                     Type = ImageType.Primary,
-                    Url = One_line_regex(new Regex("src=\"(?s)(.*?)\""), One_line_regex(new Regex("<div style=\"text-align: center;\">(?s)(.+?)alt="), WebContent))
+                    Url = One_line_regex(new Regex("src=\"(?s)(.*?)\"", RegexOptions.IgnoreCase), One_line_regex(new Regex("<div style=\"text-align: center;\">(?s)(.+?)alt=", RegexOptions.IgnoreCase), WebContent))
                 });
 
             }
@@ -327,7 +327,7 @@ namespace Emby.Plugins.MyAnimeList
         /// <returns></returns>
         public string Get_OverviewAsync(string WebContent)
         {
-            return WebUtility.HtmlDecode(One_line_regex(new Regex("<p itemprop=\"description\">(?s)(.+?)</p>"), WebContent));
+            return WebUtility.HtmlDecode(One_line_regex(new Regex("<p itemprop=\"description\">(?s)(.+?)</p>", RegexOptions.IgnoreCase), WebContent));
         }
 
         /// <summary>
@@ -375,12 +375,12 @@ namespace Emby.Plugins.MyAnimeList
                 while (!string.IsNullOrEmpty(regex_id) && x < 50)
                 {
                     regex_id = "";
-                    regex_id = One_line_regex(new Regex(@"(#revInfo(.*?)" + '"' + "(>(.*?)<))"), WebContent, 2, x);
+                    regex_id = One_line_regex(new Regex(@"(#revInfo(.*?)" + '"' + "(>(.*?)<))", RegexOptions.IgnoreCase), WebContent, 2, x);
                     if (!string.IsNullOrEmpty(regex_id))
                     {
                         if (int.TryParse(regex_id, NumberStyles.Integer, CultureInfo.InvariantCulture, out var parsedId))
                         {
-                            if (Equals_check.Compare_strings(One_line_regex(new Regex(@"(#revInfo(.*?)" + '"' + "(>(.*?)<))"), WebContent, 4, x), title))
+                            if (Equals_check.Compare_strings(One_line_regex(new Regex(@"(#revInfo(.*?)" + '"' + "(>(.*?)<))", RegexOptions.IgnoreCase), WebContent, 4, x), title))
                             {
                                 result.Add(regex_id);
                                 return result;
