@@ -16,7 +16,7 @@ using MediaBrowser.Model.Serialization;
 
 namespace Emby.Plugins.MyAnimeList
 {
-    public class MyAnimeListSeriesProvider : IRemoteMetadataProvider<Series, SeriesInfo>, IHasOrder
+    public class MyAnimeListSeriesProvider : IRemoteMetadataProvider<Series, SeriesInfo>, IHasOrder, IHasSupportedExternalIdentifiers
     {
         private readonly ILogger _log;
         private readonly IHttpClient _httpClient;
@@ -34,6 +34,14 @@ namespace Emby.Plugins.MyAnimeList
             _jsonSerializer = jsonSerializer;
             _config = config;
             _api = new Api(_log, _httpClient, _jsonSerializer);
+        }
+
+        public string[] GetSupportedExternalIdentifiers()
+        {
+            return new[] {
+
+                Name
+            };
         }
 
         public async Task<MetadataResult<Series>> GetMetadata(SeriesInfo searchInfo, CancellationToken cancellationToken)
