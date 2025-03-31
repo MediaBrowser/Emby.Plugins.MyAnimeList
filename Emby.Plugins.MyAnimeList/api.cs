@@ -342,7 +342,7 @@ namespace Emby.Plugins.MyAnimeList
             //API
             if (!string.IsNullOrEmpty(clientID))
             {
-                string json = await WebRequestAPI(string.Format(SearchLink, Uri.EscapeUriString(title)), cancellationToken, clientID).ConfigureAwait(false);
+                string json = await WebRequestAPI(string.Format(SearchLink, Uri.EscapeUriString(TruncateTo64(title))), cancellationToken, clientID).ConfigureAwait(false);
                 SearchObject search = _jsonSerializer.DeserializeFromString<SearchObject>(json);
                 foreach (SearchData data in search.data)
                 {
@@ -369,7 +369,7 @@ namespace Emby.Plugins.MyAnimeList
             else
             {
                 //Fallback to Web
-                string WebContent = await WebRequestAPI(string.Format(FallbackSearchLink, Uri.EscapeUriString(title)), cancellationToken).ConfigureAwait(false);
+                string WebContent = await WebRequestAPI(string.Format(FallbackSearchLink, Uri.EscapeUriString(TruncateTo64(title))), cancellationToken).ConfigureAwait(false);
                 string regex_id = "-";
                 int x = 0;
                 while (!string.IsNullOrEmpty(regex_id) && x < 50)
@@ -486,6 +486,14 @@ namespace Emby.Plugins.MyAnimeList
 
                 return string.Empty;
             }
+        }
+
+        /// MAL API supports max 64 character queries
+        public static string TruncateTo64(string value)
+        {
+            return value.Length > 64
+                ? value.Substring(0, 64)
+                : value;
         }
     }
 }
