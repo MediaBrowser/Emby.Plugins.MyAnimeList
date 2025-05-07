@@ -30,7 +30,7 @@ namespace Emby.Plugins.MyAnimeList
         private static ILogger _logger;
         private static IJsonSerializer _jsonSerializer;
         //API v2 
-        public string SearchLink = "https://api.myanimelist.net/v2/anime?q={0}&fields=alternative_titles&limit=10";
+        public string SearchLink = "https://api.myanimelist.net/v2/anime?q={0}&nsfw=true&fields=alternative_titles&limit=25";
         public string AnimeLink = "https://api.myanimelist.net/v2/anime/{0}?fields=id,title,main_picture,alternative_titles,start_date,end_date,synopsis,mean,status,genres,broadcast,source,pictures,background,studios";
         //Web Fallback
         public string FallbackSearchLink = "https://myanimelist.net/search/all?q={0}";
