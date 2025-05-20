@@ -16,7 +16,7 @@ using MediaBrowser.Model.Serialization;
 
 namespace Emby.Plugins.MyAnimeList
 {
-    public class MyAnimeListSeriesProvider : IRemoteMetadataProvider<Series, SeriesInfo>, IHasOrder, IHasSupportedExternalIdentifiers
+    public class MyAnimeListSeriesProvider : IRemoteMetadataProvider<Series, SeriesInfo>, IHasOrder, IHasSupportedExternalIdentifiers, IHasMetadataFeatures
     {
         private readonly ILogger _log;
         private readonly IHttpClient _httpClient;
@@ -52,12 +52,12 @@ namespace Emby.Plugins.MyAnimeList
             var aid = searchInfo.GetProviderId(Name);
             if (string.IsNullOrEmpty(aid))
             {
-                aid = await _api.FindSeries(searchInfo.Name, cancellationToken).ConfigureAwait(false);
+                aid = await _api.FindSeries(searchInfo.Name, searchInfo.EnableAdultMetadata, cancellationToken).ConfigureAwait(false);
             }
 
             if (!string.IsNullOrEmpty(aid))
             {
-                result = await _api.GetMetadata(aid, searchInfo.MetadataLanguage, cancellationToken);
+                result = await _api.GetMetadata(aid, searchInfo.MetadataLanguage, searchInfo.EnableAdultMetadata, cancellationToken);
             }
             return result;
         }
@@ -69,15 +69,15 @@ namespace Emby.Plugins.MyAnimeList
             var aid = searchInfo.GetProviderId(Name);
             if (!string.IsNullOrEmpty(aid))
             {
-                results.Add(aid, await _api.GetAnime(aid, searchInfo.MetadataLanguage, cancellationToken));
+                results.Add(aid, await _api.GetAnime(aid, searchInfo.MetadataLanguage, searchInfo.EnableAdultMetadata, cancellationToken));
             }
 
             if (!string.IsNullOrEmpty(searchInfo.Name))
             {
-                List<string> ids = await _api.Search_GetSeries_list(searchInfo.Name, cancellationToken).ConfigureAwait(false);
+                List<string> ids = await _api.Search_GetSeries_list(searchInfo.Name, searchInfo.EnableAdultMetadata, cancellationToken).ConfigureAwait(false);
                 foreach (string a in ids)
                 {
-                    results.Add(a, await _api.GetAnime(a, searchInfo.MetadataLanguage, cancellationToken));
+                    results.Add(a, await _api.GetAnime(a, searchInfo.MetadataLanguage, searchInfo.EnableAdultMetadata, cancellationToken));
                 }
             }
 
@@ -92,6 +92,8 @@ namespace Emby.Plugins.MyAnimeList
                 Url = url
             });
         }
+
+        public MetadataFeatures[] Features => new[] { MetadataFeatures.Adult };
     }
 
     public class MyAnimeListSeriesImageProvider : IRemoteImageProvider
