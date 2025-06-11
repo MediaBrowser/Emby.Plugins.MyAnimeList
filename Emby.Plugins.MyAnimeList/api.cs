@@ -30,8 +30,9 @@ namespace Emby.Plugins.MyAnimeList
         private static ILogger _logger;
         private static IJsonSerializer _jsonSerializer;
         //API v2 
-        public string SearchLink = "https://api.myanimelist.net/v2/anime?q={0}&fields=alternative_titles&limit=10";
+        public string SearchLink = "https://api.myanimelist.net/v2/anime?q={0}&fields=alternative_titles&limit=25";
         public string AnimeLink = "https://api.myanimelist.net/v2/anime/{0}?fields=id,title,main_picture,alternative_titles,start_date,end_date,synopsis,mean,status,genres,broadcast,source,pictures,background,studios";
+        public string NsfwParam = "&nsfw=true";
         //Web Fallback
         public string FallbackSearchLink = "https://myanimelist.net/search/all?q={0}";
         public string FallbackAnimeLink = "https://myanimelist.net/anime/";
@@ -54,13 +55,14 @@ namespace Emby.Plugins.MyAnimeList
             this.clientID = clientID;
         }
 
-        public async Task<MetadataResult<Series>> GetMetadata(string id, string preferredMetadataLanguage, CancellationToken cancellationToken)
+        public async Task<MetadataResult<Series>> GetMetadata(string id, string preferredMetadataLanguage, bool adultEnabled, CancellationToken cancellationToken)
         {
             var result = new MetadataResult<Series>();
             //API
             if (!string.IsNullOrEmpty(clientID))
             {
-                string json = await WebRequestAPI(string.Format(AnimeLink, id), cancellationToken, clientID).ConfigureAwait(false);
+                string url = adultEnabled ? AnimeLink + NsfwParam : AnimeLink;
+                string json = await WebRequestAPI(string.Format(url, id), cancellationToken, clientID).ConfigureAwait(false);
                 AnimeObject anime = _jsonSerializer.DeserializeFromString<AnimeObject>(json);
                 result.Item = new Series();
                 result.HasMetadata = true;
@@ -123,13 +125,14 @@ namespace Emby.Plugins.MyAnimeList
             return result;
         }
 
-        public async Task<RemoteSearchResult> GetAnime(string id, string preferredMetadataLanguage, CancellationToken cancellationToken)
+        public async Task<RemoteSearchResult> GetAnime(string id, string preferredMetadataLanguage, bool adultEnabled, CancellationToken cancellationToken)
         {
             var result = new RemoteSearchResult();
             //API
             if (!string.IsNullOrEmpty(clientID))
             {
-                string json = await WebRequestAPI(string.Format(AnimeLink, id), cancellationToken, clientID).ConfigureAwait(false);
+                string url = adultEnabled ? AnimeLink + NsfwParam : AnimeLink;
+                string json = await WebRequestAPI(string.Format(url, id), cancellationToken, clientID).ConfigureAwait(false);
                 AnimeObject anime = _jsonSerializer.DeserializeFromString<AnimeObject>(json);
                 result.Name = SelectName(anime, preferredMetadataLanguage);
                 result.SearchProviderName = MyAnimeListSeriesProvider.StaticName;
@@ -336,13 +339,14 @@ namespace Emby.Plugins.MyAnimeList
         /// <param name="title"></param>
         /// <param name="cancellationToken"></param>
         /// <returns></returns>
-        public async Task<List<string>> Search_GetSeries_list(string title, CancellationToken cancellationToken)
+        public async Task<List<string>> Search_GetSeries_list(string title, bool adultEnabled, CancellationToken cancellationToken)
         {
             List<string> result = new List<string>();
             //API
             if (!string.IsNullOrEmpty(clientID))
             {
-                string json = await WebRequestAPI(string.Format(SearchLink, Uri.EscapeUriString(TruncateTo64(title))), cancellationToken, clientID).ConfigureAwait(false);
+                string url = adultEnabled ? SearchLink + NsfwParam : SearchLink;
+                string json = await WebRequestAPI(string.Format(url, Uri.EscapeUriString(TruncateTo64(title))), cancellationToken, clientID).ConfigureAwait(false);
                 SearchObject search = _jsonSerializer.DeserializeFromString<SearchObject>(json);
                 foreach (SearchData data in search.data)
                 {
@@ -401,9 +405,9 @@ namespace Emby.Plugins.MyAnimeList
         /// <param name="title"></param>
         /// <param name="cancellationToken"></param>
         /// <returns></returns>
-        public async Task<string> FindSeries(string title, CancellationToken cancellationToken)
+        public async Task<string> FindSeries(string title, bool adultEnabled, CancellationToken cancellationToken)
         {
-            var aid = (await Search_GetSeries_list(title, cancellationToken).ConfigureAwait(false)).FirstOrDefault();
+            var aid = (await Search_GetSeries_list(title, adultEnabled, cancellationToken).ConfigureAwait(false)).FirstOrDefault();
             if (!string.IsNullOrEmpty(aid))
             {
                 return aid;
@@ -412,7 +416,7 @@ namespace Emby.Plugins.MyAnimeList
             var cleanedTitle = Equals_check.Clear_name(title);
             if (!string.Equals(cleanedTitle, title, StringComparison.OrdinalIgnoreCase))
             {
-                aid = (await Search_GetSeries_list(cleanedTitle, cancellationToken).ConfigureAwait(false)).FirstOrDefault();
+                aid = (await Search_GetSeries_list(cleanedTitle, adultEnabled, cancellationToken).ConfigureAwait(false)).FirstOrDefault();
                 if (!string.IsNullOrEmpty(aid))
                 {
                     return aid;
